@@ -1,8 +1,7 @@
-import Cloudflare from "cloudflare";
+import Cloudflare from 'cloudflare';
 import * as db from './db.js';
 
-index();
-async function index() {
+export async function uploadKv() {
   const client = new Cloudflare({
     apiEmail: process.env.CF_API_EMAIL,
     apiKey: process.env.CF_API_KEY,
@@ -17,7 +16,7 @@ async function index() {
     process.env.CF_KV_KEY,
     {
       account_id: process.env.CF_ACCOUNT_ID,
-      updateTime, nodes, links,
+      updateTime, nodes, links
     }
   );
   console.log(updateTime, value, nodes.length, links.length);

@@ -1,8 +1,31 @@
 import Database from 'better-sqlite3';
 
-const db = new Database(process.env.DB_PATH);
+const db = new Database('./sqlite.db');
 db.pragma('journal_mode = WAL');
+init();
 
+function init() {
+  // DROP TABLE IF EXISTS chat;
+  // DROP TABLE IF EXISTS channel;
+  const sql = `
+  CREATE TABLE IF NOT EXISTS channel (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    follower INTEGER NOT NULL,
+    image TEXT,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS chat (
+    id INTEGER PRIMARY KEY,
+    channel_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (channel_id) REFERENCES channel(id)
+    UNIQUE (channel_id, user_id)
+  );
+  `
+  db.exec(sql);
+}
 
 export function insertChannel(channel) {
   const sql = `
@@ -19,40 +42,23 @@ export function insertChannel(channel) {
 
 export function insertChat(chat) {
   const sql = `
-    INSERT INTO chat (channel_id, user_id, os_type)
-    VALUES (?, ?, ?)
+    INSERT INTO chat (channel_id, user_id)
+    VALUES (?, ?)
     ON CONFLICT(channel_id, user_id)
-    DO UPDATE SET os_type=?, updated_at=CURRENT_TIMESTAMP
-  `
-  db.prepare(sql).run(chat.channelId, chat.userId, chat.osType, chat.osType);
-}
-
-export function selectScrapingLives() {
-  const sql = `SELECT channel_id FROM scraping_live`;
-  return db.prepare(sql).all().map((row) => ({ channelId: row.channel_id }));
-}
-
-export function insertScrapingLives(live) {
-  const sql = `INSERT INTO scraping_live (channel_id, chat_id) VALUES (?, ?)`;
-  db.prepare(sql).run(live.channel.channelId, live.chatChannelId);
-}
-
-export function deleteScrapingLives(live) {
-  const sql = `DELETE FROM scraping_live WHERE channel_id=?`;
-  db.prepare(sql).run(live.channel.channelId);
+    DO UPDATE SET updated_at=CURRENT_TIMESTAMP
+  `;
+  db.prepare(sql).run(chat.channelId, chat.userId);
 }
 
 export function selectNodes() {
   const sql = `
     WITH
     valid_chat AS (
-      SELECT channel_id cid, os_type
+      SELECT channel_id cid
       FROM chat c
       WHERE updated_at >= DATETIME('now', '-${process.env.MIN_UPLOADER_DAYS}')
     )
-    SELECT
-      c.id id, c.name name, c.follower follower, c.image image,
-      COUNT(c.id) chat_count, COUNT(CASE WHEN vc.os_type='PC' THEN 1 END) pc_count, COUNT(CASE WHEN vc.os_type='IOS' THEN 1 END) ios_count, COUNT(CASE WHEN vc.os_type='AOS' THEN 1 END) aos_count
+    SELECT c.id id, c.name name, c.follower follower, c.image image, COUNT(c.id) chat_count
     FROM valid_chat vc
     LEFT JOIN channel c ON vc.cid = c.id
     GROUP BY id
@@ -96,3 +102,4 @@ export function selectLinks() {
   `;
   return db.prepare(sql).all();
 }
+
