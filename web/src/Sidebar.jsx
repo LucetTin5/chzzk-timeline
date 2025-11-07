@@ -11,13 +11,16 @@ import {
 export function Sidebar({ data, selectedChannel, handleChannelSearch }) {
   if (!data) return null;
 
-  const relatedChannels = data.links
-    .filter((link) => link.source.name === selectedChannel || link.target.name === selectedChannel)
-    .map((link) => {
-      const channel = (link.source.name === selectedChannel) ? link.target : link.source;
-      return { ...channel, similarity: link.distance, count: link.inter };
-    });
+  const nameIdMap = new Map(data.nodes.map((node) => [node.name, node.id]));
+  const selectedChannelId = nameIdMap.get(selectedChannel);
 
+  const idNameMap = new Map(data.nodes.map((node) => [node.id, node.name]));
+  const relatedChannels = data.links
+    .filter((link) => link.source === selectedChannelId || link.target === selectedChannelId)
+    .map((link) => {
+      const channel = (link.source === selectedChannelId) ? link.target : link.source;
+      return { ...channel, name: idNameMap.get(channel), similarity: link.distance, count: link.inter };
+    });
 
   return (
     <div className='absolute top-0 left-0 m-4 flex flex-col w-[calc(100%-2rem)] gap-4 dark:text-white sm:w-80'>
