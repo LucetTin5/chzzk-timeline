@@ -7,7 +7,7 @@ export async function scanChannels() {
   let lives = await fetchLivesPages(process.env.MIN_LIVE_USER);
 
   lives = lives.filter((live) => live.adult === false);
-  
+
   lives = await sequentialMap(lives, async (live) => {
     const { followerCount } = await fetchChannel(live.channel.channelId);
     const { chatChannelId } = await fetchLiveDetail(live.channel.channelId);
@@ -15,11 +15,11 @@ export async function scanChannels() {
   });
   lives = lives.filter((live) => live.channel.followerCount !== undefined);
   lives = lives.filter((live) => live.chatChannelId !== undefined);
-  
+
   lives.forEach((live) => db.insertChannel(live.channel));
 
   lives = lives.filter((live) => !scrapingChannels.has(live.channel.channelId));
-  
+
   lives.forEach((live) => scrapeChats(live));
 }
 
@@ -39,7 +39,7 @@ async function fetchLives(next) {
   const url = next
     ? `https://api.chzzk.naver.com/service/v1/lives?size=50&sortType=POPULAR&concurrentUserCount=${next.concurrentUserCount}&liveId=${next.liveId}`
     : 'https://api.chzzk.naver.com/service/v1/lives?size=50&sortType=POPULAR';
-  
+
   const json = await fetch(url, { headers: { 'User-Agent': 'Mozilla' } }).then((res) => res.json());
   return { lives: json.content.data, next: json.content.page.next };
 }
