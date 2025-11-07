@@ -3,18 +3,9 @@ import * as d3 from 'd3';
 import { GraphContainer } from './Graph.jsx';
 import { Header } from './Header.jsx';
 import { Sidebar } from './Sidebar.jsx';
+import rawData from '../../server/dd.json?raw';
 
-function useFetchData(url) {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetch(url)
-      .then((res) => res.json())
-      .then((json) => setData(json));
-  }, [url]);
-
-  return data;
-}
+const data = JSON.parse(rawData);
 
 function useD3Zoom(svgRef, rootRef, zoomRef) {
   useEffect(() => {
@@ -34,7 +25,7 @@ const App = () => {
   const svgRef = useRef();
   const rootRef = useRef();
   const zoomRef = useRef();
-  const data = useFetchData(import.meta.env.VITE_API_URL);
+
   useD3Zoom(svgRef, rootRef, zoomRef);
 
   const handleChannelSearch = (e) => {

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import Cloudflare from 'cloudflare';
 import * as db from './db.js';
+import fs from 'fs';
 
 export async function uploadKv() {
   // const client = new Cloudflare({
@@ -12,7 +13,7 @@ export async function uploadKv() {
   const links = db.selectLinks();
   const updateTime = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace('Z', '').split('.')[0];
 
-  console.log(nodes, links);
+  // console.log(nodes, links);
 
   // const value = await client.kv.namespaces.values.update(
   //   process.env.CF_KV_NAMESPACE,
@@ -22,7 +23,15 @@ export async function uploadKv() {
   //     updateTime, nodes, links
   //   }
   // );
-  console.log(updateTime, nodes.length, links.length);
+  // console.log(updateTime, nodes.length, links.length);
+
+  const json = {
+    updateTime,
+    nodes,
+    links,
+  };
+
+  fs.writeFileSync('data.json', JSON.stringify(json, null, 2));
 }
 
 uploadKv();

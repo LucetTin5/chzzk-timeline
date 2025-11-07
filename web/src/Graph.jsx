@@ -19,7 +19,7 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
 
   const selectedLink = links
     .filter((link) => link.source.name === selectedChannel || link.target.name === selectedChannel)
-    .filter((link) => link.distance >= 0.2);
+    .filter((link) => link.distance >= 0.05);
 
   const scaleRadius = d3.scaleLinear()
     .domain(d3.extent(data.nodes, (d) => d.follower))
@@ -44,9 +44,9 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
         setNodes([...data.nodes]);
         setLinks([...data.links]);
       });
-    
+
     return () => {
-      simulation.stop();
+      // simulation.stop();
     }
   }, [data]);
 
