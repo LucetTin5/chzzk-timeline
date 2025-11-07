@@ -39,10 +39,8 @@ function computeClusterCircles(nodes, pad = 40) {
   const circles = new Map(); // clusterId -> { cx, cy, r }
 
   for (const [cid, group] of byCluster) {
-    // 중심은 평균 좌표
     const cx = d3.mean(group, (d) => d.x) ?? 0;
     const cy = d3.mean(group, (d) => d.y) ?? 0;
-    // 반지름은 중심으로부터의 최대 거리 + 노드반경 + padding
     let r = 0;
     for (const n of group) {
       const dx = (n.x ?? 0) - cx;
@@ -127,7 +125,7 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
   );
 
   /* ---------- 클러스터 라벨 계산 ---------- */
-  const CLUSTER_TH = 0.3; // 군집 형성 임계치
+  const CLUSTER_TH = 0.25; // 군집 형성 임계치
   const clusteredData = useMemo(() => {
     const n = data.nodes.map((d) => ({ ...d }));
     const l = data.links.map((d) => ({ ...d }));
@@ -162,16 +160,25 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
     return map;
   }, [clusters]);
 
-  /* ---------- 선택 링크(하이라이트) ---------- */
+  /* ---------- 선택된 링크(유사도 굵기 표시) ---------- */
+  const TH = 0.1;
   const selectedLink = useMemo(() => {
     if (!selectedChannel) return [];
-    const TH = 0.2;
     return links.filter((l) => {
       const s = typeof l.source === 'object' ? l.source : nodes.find((n) => n.id === l.source);
       const t = typeof l.target === 'object' ? l.target : nodes.find((n) => n.id === l.target);
       return (s?.name === selectedChannel || t?.name === selectedChannel) && (l.distance ?? 0) >= TH;
     });
   }, [links, nodes, selectedChannel]);
+
+  const strokeScale = useMemo(() => {
+    if (!selectedLink.length) return d3.scaleLinear().domain([0, 1]).range([2, 10]);
+    const ext = d3.extent(selectedLink, (d) => d.distance ?? 0);
+    const lo = ext[0] ?? 0;
+    const hi = ext[1] ?? 1;
+    const safeHi = lo === hi ? lo + 1e-6 : hi;
+    return d3.scaleLinear().domain([lo, safeHi]).range([3, 14]).nice();
+  }, [selectedLink]);
 
   /* ---------- 시뮬레이션 ---------- */
   useEffect(() => {
@@ -215,7 +222,6 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
     simulation.on('tick', () => {
       tickCount += 1;
 
-      // N틱마다 한 번만 비싼 계산 수행(성능)
       if (tickCount % 2 === 0) {
         const circles = computeClusterCircles(simNodes, 40);
         resolveClusterOverlaps(circles, 0.7);
@@ -267,6 +273,9 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
     return result;
   }, [nodes]);
 
+  // 선택 노드가 없을 때 전체 링크를 연하게 깔아 대비를 주고 싶으면 true로 바꿔도 됨
+  const SHOW_FAINT_BG_LINKS = false;
+
   return (
     <>
       {/* 노드 이미지 패턴 */}
@@ -292,12 +301,45 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
         ))}
       </g>
 
-      {/* 선택된 링크 하이라이트 */}
+      {/* 배경 링크 (연하게) */}
+      {SHOW_FAINT_BG_LINKS && (
+        <g>
+          {links.map(({ source, target }, i) => {
+            const s = typeof source === 'object' ? source : nodes.find((n) => n.id === source);
+            const t = typeof target === 'object' ? target : nodes.find((n) => n.id === target);
+            if (!s || !t) return null;
+            return (
+              <line
+                key={`bg-${s.id}-${t.id}-${i}`}
+                x1={s.x}
+                y1={s.y}
+                x2={t.x}
+                y2={t.y}
+                stroke="currentColor"
+                className="text-gray-400"
+                strokeWidth={1}
+                opacity={0.15}
+              />
+            );
+          })}
+        </g>
+      )}
+
+      {/* 선택된 링크 하이라이트 (굵기 = distance) */}
       <g>
-        {selectedLink.map(({ source, target }) => {
+        {selectedLink.map(({ source, target, distance }) => {
           const s = typeof source === 'object' ? source : nodes.find((n) => n.id === source);
           const t = typeof target === 'object' ? target : nodes.find((n) => n.id === target);
           if (!s || !t) return null;
+
+
+          function adjustDistanceSoft(distance, k = 10) {
+            const centeredX = distance - 0.4;
+            const adjustedX = k * centeredX;
+            return 1.0 / (1.0 + Math.exp(-adjustedX));
+          }
+          const adjustedDistance = adjustDistanceSoft(distance ?? 0);
+
           return (
             <line
               key={`hl-${s.id}-${t.id}`}
@@ -305,8 +347,9 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
               y1={s.y}
               x2={t.x}
               y2={t.y}
-              className="stroke-gray-400"
-              strokeWidth={5}
+              stroke="currentColor"
+              className="text-gray-200 dark:text-gray-300"
+              strokeWidth={strokeScale(adjustedDistance ?? 0)}
               opacity={0.9}
             />
           );
