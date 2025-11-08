@@ -124,13 +124,13 @@ function scrapeChats(live) {
   ws.on('open', () => {
     ws.send(JSON.stringify(WS_MSG.INIT(live.chatChannelId)));
     scrapingChannels.add(live.channel.channelId)
-    log('Opened!', live.channel.channelId, scrapingChannels);
+    log('Opened!', live.channel.channelId, scrapingChannels.size);
   });
 
   ws.on('close', () => {
     clearInterval(interval);
     scrapingChannels.delete(live.channel.channelId);
-    log('Closed!', live.channel.channelId, scrapingChannels);
+    log('Closed!', live.channel.channelId, scrapingChannels.size);
   });
 
   ws.on('message', (data) => {

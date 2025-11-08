@@ -1,57 +1,41 @@
-import { useState, useEffect, useRef } from 'react';
-import * as d3 from 'd3';
-import { GraphContainer } from './Graph.jsx';
-import { Header } from './Header.jsx';
-import { Sidebar } from './Sidebar.jsx';
-import rawData from '../../server/dd.json?raw';
+import { NavLink, Routes, Route, Navigate } from 'react-router-dom';
+import MapPage from './pages/Map/MapPage.jsx';
+import TimelinePage from './pages/Timeline/TimelinePage.jsx';
 
-const data = JSON.parse(rawData);
-
-function useD3Zoom(svgRef, rootRef, zoomRef) {
-  useEffect(() => {
-    const svg = d3.select(svgRef.current);
-    const root = d3.select(rootRef.current);
-
-    zoomRef.current = d3.zoom().on('zoom', (event) => {
-      root.attr('transform', event.transform);
-    });
-
-    svg.call(zoomRef.current);
-  }, [svgRef, rootRef, zoomRef]);
-}
+const navItems = [
+  { to: '/map', label: '스트리머 맵' },
+  { to: '/timeline', label: '스트리머 타임라인' },
+];
 
 const App = () => {
-  const [selectedChannel, setSelectedChannel] = useState('');
-  const svgRef = useRef();
-  const rootRef = useRef();
-  const zoomRef = useRef();
-
-  useD3Zoom(svgRef, rootRef, zoomRef);
-
-  const handleChannelSearch = (e) => {
-    const channelName = e.target.value;
-    setSelectedChannel(channelName);
-
-    const selectedNode = data.nodes.find((node) => node.name === channelName);
-    if (!selectedNode) return;
-
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const svg = d3.select(svgRef.current);
-
-    svg.transition().duration(1000).call(
-      zoomRef.current.transform,
-      d3.zoomIdentity.translate(width / 2, height / 2).translate(-selectedNode.x, -selectedNode.y)
-    );
-  }
-
   return (
-    <>
-      <GraphContainer data={data} selectedChannel={selectedChannel} setSelectedChannel={setSelectedChannel} svgRef={svgRef} rootRef={rootRef} />
-      <Sidebar data={data} selectedChannel={selectedChannel} handleChannelSearch={handleChannelSearch} />
-      <Header data={data} />
-    </>
+    <div className="min-h-screen text-white">
+      <nav className="fixed left-1/2 top-6 z-50 flex -translate-x-1/2 items-center gap-6 rounded-full bg-slate-900/80 px-8 py-3 text-sm font-semibold shadow-lg backdrop-blur">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              [
+                'transition-colors',
+                isActive ? 'text-teal-300' : 'text-slate-300 hover:text-white',
+              ].join(' ')
+            }
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div className="relative min-h-screen">
+        <Routes>
+          <Route path="/" element={<Navigate to="/map" replace />} />
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/timeline" element={<TimelinePage />} />
+        </Routes>
+      </div>
+    </div>
   );
-}
+};
 
 export default App;
