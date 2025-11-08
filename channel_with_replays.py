@@ -77,6 +77,7 @@ def build_replay_entries(videos: Iterable[dict]) -> list[dict]:
                 "title": title,
                 "start": start_str,
                 "end": end_str,
+                "videoNo": video.get("videoNo"),
                 "thumbnail": video.get("thumbnailUrl"),
             }
         )

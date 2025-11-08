@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Avatar, Badge, Group, Text } from '@mantine/core';
 
@@ -28,8 +28,10 @@ export function TimelineTracks({
     const surfaceRef = useRef(null);
     const interactionRef = useRef(null);
     const [selectionBox, setSelectionBox] = useState(null);
+    const [tooltip, setTooltip] = useState(null);
 
     const { minTime, maxTime, span: boundsSpan } = bounds;
+    const timelineHeight = channelRows.length * rowHeight;
 
     const enforceRange = useCallback(
         (start, end) => {
@@ -68,6 +70,49 @@ export function TimelineTracks({
         [boundsSpan, maxTime, minTime, minViewSpan]
     );
 
+    const hideTooltip = useCallback(() => {
+        setTooltip(null);
+    }, []);
+
+    useEffect(() => {
+        hideTooltip();
+    }, [hideTooltip, viewRange.start, viewRange.end, channelRows]);
+
+    const showTooltip = useCallback(
+        (event, channel, replay) => {
+            const surfaceElement = surfaceRef.current;
+            if (!surfaceElement) return;
+
+            const surfaceRect = surfaceElement.getBoundingClientRect();
+            const targetRect = event.currentTarget.getBoundingClientRect();
+
+            const containerWidth = surfaceRect.width;
+            if (containerWidth <= 0) return;
+
+            const availableWidth = Math.max(containerWidth - 16, 0);
+            const tooltipWidth = availableWidth >= 240 ? Math.min(availableWidth, 600) : availableWidth;
+            if (tooltipWidth <= 0) {
+                setTooltip(null);
+                return;
+            }
+
+            const centerLeft = targetRect.left - surfaceRect.left + targetRect.width / 2;
+            const left = clamp(centerLeft - tooltipWidth / 2, 8, Math.max(containerWidth - tooltipWidth - 8, 8));
+
+            const belowTop = targetRect.bottom - surfaceRect.top + 12;
+            const top = belowTop;
+
+            setTooltip({
+                channel,
+                replay,
+                left,
+                top,
+                width: tooltipWidth,
+            });
+        },
+        [clamp]
+    );
+
     const handlePointerDown = useCallback(
         (event) => {
             if (event.button !== 0) return;
@@ -75,9 +120,15 @@ export function TimelineTracks({
             const surfaceElement = surfaceRef.current;
             if (!axisElement || !surfaceElement) return;
 
+            const linkTarget = event.target.closest('a[data-timeline-link="true"]');
+            if (linkTarget) {
+                return;
+            }
+
             const rect = axisElement.getBoundingClientRect();
             if (rect.width <= 0 || event.clientX < rect.left || event.clientX > rect.right) return;
 
+            hideTooltip();
             event.preventDefault();
             const pointerX = clamp(event.clientX - rect.left, 0, rect.width);
             const isAxisArea = axisElement.contains(event.target);
@@ -99,7 +150,7 @@ export function TimelineTracks({
 
             surfaceElement.setPointerCapture?.(event.pointerId);
         },
-        [clamp, viewRange]
+        [clamp, hideTooltip, viewRange]
     );
 
     const handlePointerMove = useCallback(
@@ -147,6 +198,7 @@ export function TimelineTracks({
             const interaction = interactionRef.current;
             if (!interaction || interaction.pointerId !== event.pointerId) return;
 
+            hideTooltip();
             const axisElement = axisRef.current;
             const surfaceElement = surfaceRef.current;
             if (!axisElement || !surfaceElement) {
@@ -184,14 +236,15 @@ export function TimelineTracks({
                 // ignore
             }
         },
-        [clamp, enforceRange, onViewRangeChange]
+        [clamp, enforceRange, hideTooltip, onViewRangeChange]
     );
 
     const handleResetView = useCallback(() => {
         interactionRef.current = null;
         setSelectionBox(null);
+        hideTooltip();
         onResetView();
-    }, [onResetView]);
+    }, [hideTooltip, onResetView]);
 
     if (channelRows.length === 0) {
         return (
@@ -249,16 +302,22 @@ export function TimelineTracks({
             </div>
 
             <div className="grid grid-cols-[220px_minmax(0,1fr)] items-start gap-4">
-                <div className="overflow-hidden rounded-2xl border border-slate-800/70 bg-slate-900/60">
-                    <div className="divide-y divide-slate-800/60">
-                        {channelRows.map(({ channel }) => (
-                            <Group
-                                key={channel.channelId ?? channel.name}
-                                gap="sm"
-                                wrap="nowrap"
-                                className="px-4"
-                                style={{ height: rowHeight }}
-                            >
+                <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-slate-900/60">
+                    <div className="pointer-events-none absolute inset-0">
+                        {channelRows.slice(1).map((_, dividerIndex) => (
+                            <div
+                                key={`sidebar-divider-${dividerIndex}`}
+                                className="absolute left-4 right-4 border-t border-slate-800/35"
+                                style={{ top: (dividerIndex + 1) * rowHeight }}
+                            />
+                        ))}
+                    </div>
+                    {channelRows.map(({ channel }) => {
+                        const key = channel.channelId ?? channel.name;
+                        const channelUrl = channel?.channelId ? `https://chzzk.naver.com/${channel.channelId}` : null;
+
+                        const content = (
+                            <Group gap="sm" wrap="nowrap" className="px-4" style={{ height: rowHeight }}>
                                 <Avatar
                                     src={channel.image}
                                     radius="xl"
@@ -282,13 +341,32 @@ export function TimelineTracks({
                                     </Group>
                                 </div>
                             </Group>
-                        ))}
-                    </div>
-                </div>
+                        );
 
+                        if (channelUrl) {
+                            return (
+                                <a
+                                    key={key}
+                                    href={channelUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block no-underline text-inherit transition hover:bg-slate-800/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400/70"
+                                >
+                                    {content}
+                                </a>
+                            );
+                        }
+
+                        return (
+                            <div key={key} className="block">
+                                {content}
+                            </div>
+                        );
+                    })}
+                </div>
                 <div
                     className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-slate-900/60"
-                    style={{ height: channelRows.length * rowHeight }}
+                    style={{ height: timelineHeight }}
                 >
                     <div className="pointer-events-none absolute inset-0">
                         {selectionBox ? (
@@ -338,29 +416,74 @@ export function TimelineTracks({
                             const top = rowIndex * rowHeight + rowHeight / 2;
 
                             return (
-                                <div
+                                <a
                                     key={`${channel.channelId ?? channel.name}-${index}-${replay.startDate.toISOString()}`}
-                                    className="absolute flex h-6 -translate-y-1/2 items-center overflow-hidden rounded-full bg-teal-400/35 shadow-[0_0_0_1px_rgba(45,212,191,0.45)] backdrop-blur-sm transition hover:bg-teal-300/50"
+                                    className="absolute flex h-6 -translate-y-1/2 cursor-pointer select-none items-center overflow-hidden rounded-full bg-teal-400/35 shadow-[0_0_0_1px_rgba(45,212,191,0.45)] backdrop-blur-sm transition hover:bg-teal-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300/70"
                                     style={{
                                         left: `${left}%`,
                                         width: `${width}%`,
                                         top,
                                     }}
-                                    title={`${replay.title}\n${formatDateRange(replay.startDate, replay.endDate)}${formatDuration(replay.durationMs) ? ` · ${formatDuration(replay.durationMs)}` : ''}`}
+                                    tabIndex={0}
+                                    aria-label={`${replay.title} · ${formatDateRange(replay.startDate, replay.endDate)}${formatDuration(replay.durationMs) ? ` · ${formatDuration(replay.durationMs)}` : ''}`}
+                                    onMouseEnter={(event) => showTooltip(event, channel, replay)}
+                                    onFocus={(event) => showTooltip(event, channel, replay)}
+                                    onMouseLeave={hideTooltip}
+                                    onBlur={hideTooltip}
+                                    href={replay?.videoNo ? `https://chzzk.naver.com/video/${replay.videoNo}` : undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    data-timeline-link="true"
                                 >
                                     <Text
                                         size="xs"
                                         fw={600}
-                                        className="w-full truncate px-3 text-teal-50 drop-shadow-[0_0_6px_rgba(15,118,110,0.4)]"
+                                        className="w-full truncate px-3 text-teal-50 drop-shadow-[0_0_6px_rgba(15,118,110,0.4)] select-none"
                                     >
                                         {replay.title}
                                     </Text>
-                                </div>
+                                </a>
                             );
                         })
                     )}
                 </div>
             </div>
+
+            {tooltip ? (
+                <div
+                    className="pointer-events-none absolute z-30"
+                    style={{ left: tooltip.left, top: tooltip.top, width: tooltip.width }}
+                >
+                    <div className="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/95 p-4 shadow-xl shadow-slate-900/60 backdrop-blur">
+                        <div className="flex gap-5 max-sm:flex-col">
+                            {tooltip.replay.thumbnail ? (
+                                <img
+                                    src={tooltip.replay.thumbnail}
+                                    alt={`${tooltip.replay.title} 썸네일`}
+                                    className="h-40 w-72 flex-none rounded-xl border border-slate-800/60 object-cover shadow-inner shadow-slate-900/40 max-sm:w-full"
+                                    loading="lazy"
+                                />
+                            ) : null}
+                            <div className="min-w-0 space-y-1">
+                                <Text size="xs" c="dimmed" fw={600} className="uppercase tracking-wide">
+                                    {tooltip.channel.name}
+                                </Text>
+                                <Text size="sm" fw={600} className="text-slate-100">
+                                    {tooltip.replay.title}
+                                </Text>
+                                <Text size="xs" c="dimmed">
+                                    {formatDateRange(tooltip.replay.startDate, tooltip.replay.endDate)}
+                                </Text>
+                                {formatDuration(tooltip.replay.durationMs) ? (
+                                    <Text size="xs" c="dimmed">
+                                        {formatDuration(tooltip.replay.durationMs)}
+                                    </Text>
+                                ) : null}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }
