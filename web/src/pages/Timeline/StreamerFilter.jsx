@@ -187,7 +187,7 @@ export function StreamerFilter({
                                             aria-label={`${channel.name} 선택`}
                                         />
                                         <Group gap="sm" wrap="nowrap" ml="sm">
-                                            <Avatar src={channel.image} radius="xl" size={32} alt={channel.name}>
+                                            <Avatar src={`${channel.image}?type=f120_120_na`} radius="xl" size={40} alt={channel.name}>
                                                 {getInitials(channel.name)}
                                             </Avatar>
                                             <div className="min-w-0">

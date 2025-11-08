@@ -76,9 +76,9 @@ const ChannelSidebar = ({ channelRows, rowHeight }) => (
             const content = (
                 <Group gap="sm" wrap="nowrap" className="px-4" style={{ height: rowHeight }}>
                     <Avatar
-                        src={channel.image}
+                        src={`${channel.image}?type=f120_120_na`}
                         radius="xl"
-                        size={46}
+                        size={60}
                         alt={channel.name}
                         className="shadow-md ring-1 ring-slate-800/60"
                     >
