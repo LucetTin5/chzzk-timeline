@@ -66,7 +66,7 @@ const App = () => {
 
       <div className="relative min-h-screen">
         <Routes>
-          <Route path="/" element={<Navigate to="/map" replace />} />
+          <Route path="/" element={<Navigate to="/timeline" replace />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/timeline" element={<TimelinePage />} />
         </Routes>
