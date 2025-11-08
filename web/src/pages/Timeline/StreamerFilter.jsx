@@ -6,6 +6,18 @@ const NAV_OFFSET = `${NAV_OFFSET_REM}rem`;
 const FILTER_HEIGHT = `calc(100vh - ${NAV_OFFSET_REM}rem)`;
 const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)';
 
+const CARD_STYLE = {
+    background: 'linear-gradient(155deg, rgba(15,23,42,0.92), rgba(30,41,59,0.88))',
+    borderColor: 'rgba(45, 212, 191, 0.18)',
+    boxShadow: '0 24px 48px -24px rgba(13, 148, 136, 0.5)',
+    backdropFilter: 'blur(14px)',
+};
+
+const EMPTY_STATE_STYLE = {
+    borderColor: 'rgba(148, 163, 184, 0.28)',
+    background: 'rgba(15, 23, 42, 0.82)',
+};
+
 const getInitials = (name = '') => {
     const trimmed = name.trim();
     if (!trimmed) return '?';
@@ -110,7 +122,10 @@ export function StreamerFilter({
             <ScrollArea style={{ flex: 1 }} type="auto" offsetScrollbars>
                 <Stack gap="xs" pr="sm">
                     {sidebarChannels.length === 0 ? (
-                        <div className="flex h-32 items-center justify-center rounded-xl border border-slate-800/60 bg-slate-900/40">
+                        <div
+                            className="flex h-32 items-center justify-center rounded-xl border"
+                            style={EMPTY_STATE_STYLE}
+                        >
                             <Text size="xs" c="dimmed">
                                 검색 결과가 없습니다.
                             </Text>
@@ -120,32 +135,40 @@ export function StreamerFilter({
                             const id = channel.channelId ?? channel.name;
                             const followerLabel = Number(channel.follower ?? 0).toLocaleString('ko-KR');
                             return (
-                                <Checkbox
+                                <label
                                     key={id}
-                                    checked={selectedChannelIds.includes(id)}
-                                    onChange={() => onToggleChannel(id)}
-                                    radius="md"
-                                    className="rounded-lg px-2 py-2 transition hover:bg-slate-800/50"
-                                    styles={{
-                                        input: { cursor: 'pointer' },
-                                        label: { width: '100%' },
+                                    htmlFor={`channel-${id}`}
+                                    className="flex cursor-pointer select-none items-center rounded-lg px-2 py-2 transition hover:bg-slate-800/50"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        onToggleChannel(id);
                                     }}
-                                    label={
-                                        <Group gap="sm" wrap="nowrap">
-                                            <Avatar src={channel.image} radius="xl" size={32} alt={channel.name}>
-                                                {getInitials(channel.name)}
-                                            </Avatar>
-                                            <div className="min-w-0">
-                                                <Text size="sm" fw={600} className="truncate">
-                                                    {channel.name}
-                                                </Text>
-                                                <Text size="xs" c="dimmed">
-                                                    팔로워 {followerLabel}
-                                                </Text>
-                                            </div>
-                                        </Group>
-                                    }
-                                />
+                                >
+                                    <Checkbox
+                                        id={`channel-${id}`}
+                                        checked={selectedChannelIds.includes(id)}
+                                        onChange={() => onToggleChannel(id)}
+                                        radius="md"
+                                        styles={{
+                                            input: { cursor: 'pointer' },
+                                        }}
+                                        aria-label={`${channel.name} 선택`}
+                                    />
+                                    <Group gap="sm" wrap="nowrap" ml="sm">
+                                        <Avatar src={channel.image} radius="xl" size={32} alt={channel.name}>
+                                            {getInitials(channel.name)}
+                                        </Avatar>
+                                        <div className="min-w-0">
+                                            <Text size="sm" fw={600} className="truncate">
+                                                {channel.name}
+                                            </Text>
+                                            <Text size="xs" c="dimmed">
+                                                팔로워 {followerLabel}
+                                            </Text>
+                                        </div>
+                                    </Group>
+                                </label>
                             );
                         })
                     )}
@@ -173,7 +196,8 @@ export function StreamerFilter({
                             radius="xl"
                             padding="lg"
                             withBorder
-                            className="flex h-full flex-col border border-slate-800/60 bg-slate-900/70 backdrop-blur"
+                            className="flex h-full flex-col"
+                            style={CARD_STYLE}
                         >
                             {cardContent}
                         </Card>
@@ -184,8 +208,8 @@ export function StreamerFilter({
                         radius="xl"
                         padding="lg"
                         withBorder
-                        className="flex flex-col border border-slate-800/60 bg-slate-900/70 backdrop-blur"
-                        style={{ marginTop: NAV_OFFSET }}
+                        className="flex flex-col"
+                        style={{ ...CARD_STYLE, marginTop: NAV_OFFSET }}
                     >
                         {cardContent}
                     </Card>
@@ -200,8 +224,8 @@ export function StreamerFilter({
                 radius="xl"
                 padding="lg"
                 withBorder
-                className="flex h-full flex-col border border-slate-800/60 bg-slate-900/70 backdrop-blur"
-                style={{ height: FILTER_HEIGHT, marginTop: NAV_OFFSET }}
+                className="flex h-full flex-col"
+                style={{ ...CARD_STYLE, height: FILTER_HEIGHT, marginTop: NAV_OFFSET }}
             >
                 {cardContent}
             </Card>

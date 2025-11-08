@@ -80,7 +80,7 @@ function resolveClusterOverlaps(circles, k = 0.7) {
 
 export function GraphContainer({ data, selectedChannel, setSelectedChannel, svgRef, rootRef }) {
     return (
-        <svg ref={svgRef} className="w-screen h-screen dark:bg-gray-700">
+        <svg ref={svgRef} className="h-screen w-screen bg-slate-950/95 text-slate-100">
             <g ref={rootRef}>
                 {data ? (
                     <Graph
@@ -138,10 +138,12 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
         () => Array.from(new Set(clusteredData.nodes.map((n) => n.cluster ?? 0))),
         [clusteredData.nodes]
     );
-    const colorByCluster = useMemo(
-        () => d3.scaleOrdinal(d3.schemeTableau10).domain(clusters),
-        [clusters]
-    );
+    const colorByCluster = useMemo(() => {
+        const brightened = d3.schemeTableau10.map((color) =>
+            d3.interpolateRgb(color, '#ffffff')(0.72)
+        );
+        return d3.scaleOrdinal(brightened).domain(clusters);
+    }, [clusters]);
 
     const centersGrid = useMemo(() => {
         const w = window.innerWidth;
@@ -294,7 +296,7 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
                         key={`hull-${cid}`}
                         d={`M${hull.map((p) => p.join(',')).join('L')}Z`}
                         fill={colorByCluster(cid)}
-                        opacity={0.08}
+                        opacity={0.12}
                         stroke={colorByCluster(cid)}
                         strokeWidth={1.5}
                     />

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import { GraphContainer } from './Graph.jsx';
-import { Header } from './Header.jsx';
 import { Sidebar } from './Sidebar.jsx';
 
 function useD3Zoom(svgRef, rootRef, zoomRef) {
@@ -55,7 +54,7 @@ export function MapPage() {
     };
 
     return (
-        <>
+        <div className="relative min-h-screen bg-slate-950/95 text-slate-100">
             <GraphContainer
                 data={data}
                 selectedChannel={selectedChannel}
@@ -68,8 +67,7 @@ export function MapPage() {
                 selectedChannel={selectedChannel}
                 handleChannelSearch={handleChannelSearch}
             />
-            <Header data={data} />
-        </>
+        </div>
     );
 }
 
