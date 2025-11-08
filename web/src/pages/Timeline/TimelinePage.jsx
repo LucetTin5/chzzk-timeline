@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Container, Group, MultiSelect, Stack, Text, TextInput, Title } from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
 import { StreamerFilter } from './StreamerFilter.jsx';
 import { TimelineTracks } from './TimelineTracks.jsx';
 
@@ -9,12 +10,38 @@ const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 const ROW_HEIGHT = 84;
-const THREE_MONTHS_MS = 90 * DAY_MS;
 const TOP_CATEGORY_LIMIT = 24;
 const TOP_TAG_LIMIT = 48;
 
+const toDateInputValue = (date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const parseDateInputValue = (value, endOfDay = false) => {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null;
+    const [year, month, day] = parts;
+    return endOfDay ? new Date(year, month - 1, day, 23, 59, 59, 999) : new Date(year, month - 1, day);
+};
+
+const createDefaultDateRange = () => {
+    const now = new Date();
+    const ninetyDaysAgo = new Date(now.getTime() - 90 * DAY_MS);
+    return {
+        start: toDateInputValue(ninetyDaysAgo),
+        end: toDateInputValue(now),
+    };
+};
+
 const ReplaySummaryCard = ({
     summary,
+    selectedCategories = [],
+    selectedTags = [],
     onCategoryToggle,
     onTagToggle,
 }) => (
@@ -40,7 +67,7 @@ const ReplaySummaryCard = ({
                                 <Badge
                                     key={label}
                                     variant="light"
-                                    color={'teal'}
+                                    color={selectedCategories.includes(label) ? 'teal' : 'gray'}
                                     radius="lg"
                                     size="md"
                                     className="cursor-pointer transition-colors hover:bg-teal-400/20"
@@ -63,7 +90,7 @@ const ReplaySummaryCard = ({
                                 <Badge
                                     key={label}
                                     variant="light"
-                                    color={'gray'}
+                                    color={selectedTags.includes(label) ? 'teal' : 'gray'}
                                     radius="lg"
                                     size="md"
                                     className="cursor-pointer transition-colors hover:bg-teal-400/20"
@@ -94,6 +121,7 @@ const parseDate = (value) => {
 };
 
 const DATE_RANGE_FORMAT = new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
@@ -265,6 +293,9 @@ const formatTickLabel = (date, unit, showDate, spanMs) => {
 const TimelinePage = () => {
     const [rawTimeline, setRawTimeline] = useState([]);
     const [loadError, setLoadError] = useState(null);
+    const defaultDateRangeRef = useRef(createDefaultDateRange());
+    const [startDateFilter, setStartDateFilter] = useState(defaultDateRangeRef.current.start);
+    const [endDateFilter, setEndDateFilter] = useState(defaultDateRangeRef.current.end);
 
     useEffect(() => {
         let aborted = false;
@@ -297,7 +328,17 @@ const TimelinePage = () => {
 
     const timelineData = useMemo(() => {
         const parsed = Array.isArray(rawTimeline) ? rawTimeline : [];
-        const cutoffTime = Date.now() - THREE_MONTHS_MS;
+        const startFilter = parseDateInputValue(startDateFilter, false);
+        const endFilter = parseDateInputValue(endDateFilter, true);
+        let startTime = startFilter ? startFilter.getTime() : null;
+        let endTime = endFilter ? endFilter.getTime() : null;
+
+        if (startTime && endTime && startTime > endTime) {
+            const temp = startTime;
+            startTime = endTime;
+            endTime = temp;
+        }
+
         return parsed
             .map((channel) => {
                 const replays = Array.isArray(channel?.replays)
@@ -306,7 +347,11 @@ const TimelinePage = () => {
                             const startDate = parseDate(replay.start);
                             const endDate = parseDate(replay.end);
                             if (!startDate || !endDate || endDate.getTime() <= startDate.getTime()) return null;
-                            if (startDate.getTime() < cutoffTime) return null;
+                            // 가끔 이상한 리플들 있어서 24시간 초과 시 제외
+                            if (endDate.getTime() - startDate.getTime() > 24 * 60 * 60 * 1000) return null;
+                            const startMs = startDate.getTime();
+                            if (startTime && startMs < startTime) return null;
+                            if (endTime && startMs > endTime) return null;
                             return {
                                 ...replay,
                                 startDate,
@@ -322,7 +367,7 @@ const TimelinePage = () => {
             })
             .filter((channel) => channel.replays.length > 0)
             .sort((a, b) => (b?.follower ?? 0) - (a?.follower ?? 0));
-    }, [rawTimeline]);
+    }, [rawTimeline, startDateFilter, endDateFilter]);
 
     const bounds = useMemo(() => {
         let min = Number.POSITIVE_INFINITY;
@@ -571,12 +616,16 @@ const TimelinePage = () => {
     }, [replayFilteredTimeline]);
 
     const canLoadMore = visibleCount < replayFilteredTimeline.length;
+    const isDefaultDateRange =
+        startDateFilter === defaultDateRangeRef.current.start &&
+        endDateFilter === defaultDateRangeRef.current.end;
     const isFilterActive =
         filterText.trim().length > 0 ||
         selectedChannelIds.length > 0 ||
         replayTitleFilter.trim().length > 0 ||
         selectedCategories.length > 0 ||
-        selectedTags.length > 0;
+        selectedTags.length > 0 ||
+        !isDefaultDateRange;
     const selectedCount = selectedChannelIds.length;
 
     const resetView = useCallback(() => {
@@ -589,6 +638,10 @@ const TimelinePage = () => {
         setReplayTitleFilter('');
         setSelectedCategories([]);
         setSelectedTags([]);
+        const defaults = createDefaultDateRange();
+        defaultDateRangeRef.current = defaults;
+        setStartDateFilter(defaults.start);
+        setEndDateFilter(defaults.end);
     };
 
     const toggleChannelSelection = (id) => {
@@ -636,72 +689,145 @@ const TimelinePage = () => {
                                     현재 {replayFilteredTimeline.length.toLocaleString('ko-KR')}명의 스트리머가 조건에 맞습니다.
                                 </Text>
                             </div>
-                            <Group gap="xs">
-                                <Button
-                                    variant="subtle"
-                                    color="gray"
-                                    radius="lg"
-                                    size="sm"
-                                    onClick={resetView}
-                                    disabled={!isZoomed}
-                                >
-                                    전체 범위 보기
-                                </Button>
-                            </Group>
                         </Group>
-                        <Stack gap="xs" className="w-full">
-                            <Group align="flex-end" gap="sm" wrap="wrap">
-                                <TextInput
-                                    label="방제 키워드 필터"
-                                    placeholder="쉼표(,)로 구분된 키워드를 모두 포함하는 리플레이만 표시"
-                                    value={replayTitleFilter}
-                                    onChange={(event) => setReplayTitleFilter(event.currentTarget.value)}
-                                    radius="lg"
+                        <Group align="flex-start" justify="space-between" gap="xl" wrap="wrap">
+                            <Stack gap="xs" className="w-full max-w-5xl">
+                                <Group align="flex-end" gap="sm" wrap="wrap" className="w-full">
+                                    <div className="flex w-full flex-1 min-w-[240px]">
+                                        <TextInput
+                                            label="방제 키워드 필터"
+                                            placeholder="쉼표(,)로 구분된 키워드를 모두 포함하는 리플레이만 표시"
+                                            value={replayTitleFilter}
+                                            onChange={(event) => setReplayTitleFilter(event.currentTarget.value)}
+                                            radius="lg"
+                                            size="sm"
+                                            className="w-full max-w-xl"
+                                        />
+                                    </div>
+                                    <div className="flex w-full flex-1 min-w-[240px]">
+                                        <Button
+                                            variant="subtle"
+                                            color="gray"
+                                            radius="lg"
+                                            size="xs"
+                                            onClick={() => setReplayTitleFilter('')}
+                                            disabled={replayKeywords.length === 0}
+                                        >
+                                            키워드 초기화
+                                        </Button>
+                                    </div>
+                                </Group>
+                                <Group gap="sm" align="end" className="w-full">
+                                    <div className="flex w-full flex-1 min-w-[240px]">
+                                        <MultiSelect
+                                            data={categoryOptions}
+                                            value={selectedCategories}
+                                            onChange={setSelectedCategories}
+                                            label="카테고리 필터"
+                                            placeholder="카테고리를 선택하세요"
+                                            searchable
+                                            clearable
+                                            radius="lg"
+                                            size="sm"
+                                            className="w-full max-w-xl"
+                                            nothingFoundMessage="일치하는 카테고리가 없습니다."
+                                            maxDropdownHeight={280}
+                                        />
+                                    </div>
+                                    <div className="flex w-full flex-1 min-w-[240px]">
+                                        <MultiSelect
+                                            data={tagOptions}
+                                            value={selectedTags}
+                                            onChange={setSelectedTags}
+                                            label="태그 필터"
+                                            placeholder="태그를 선택하세요"
+                                            searchable
+                                            clearable
+                                            radius="lg"
+                                            size="sm"
+                                            className="w-full max-w-xl"
+                                            nothingFoundMessage="일치하는 태그가 없습니다."
+                                            maxDropdownHeight={280}
+                                        />
+                                    </div>
+                                </Group>
+                            </Stack>
+
+                            <Stack gap="xs" className="w-full max-w-xs">
+                                <DatePickerInput
+                                    type="range"
+                                    allowSingleDateInRange
+                                    popoverProps={{ withinPortal: true }}
+                                    label="기간 필터"
+                                    value={[
+                                        parseDateInputValue(startDateFilter, false),
+                                        parseDateInputValue(endDateFilter, false),
+                                    ]}
+                                    onChange={([start, end]) => {
+                                        setStartDateFilter(toDateInputValue(start ?? ''));
+                                        setEndDateFilter(toDateInputValue(end ?? ''));
+                                    }}
+                                    locale="ko"
+                                    valueFormat="YYYY-MM-DD"
+                                    className="text-xs"
                                     size="sm"
-                                    className="w-full max-w-xl"
-                                />
-                                <Button
-                                    variant="subtle"
-                                    color="gray"
                                     radius="lg"
-                                    size="xs"
-                                    onClick={() => setReplayTitleFilter('')}
-                                    disabled={replayKeywords.length === 0}
-                                >
-                                    키워드 초기화
-                                </Button>
-                            </Group>
-                            <Group align="flex-end" gap="sm" wrap="wrap">
-                                <MultiSelect
-                                    data={categoryOptions}
-                                    value={selectedCategories}
-                                    onChange={setSelectedCategories}
-                                    label="카테고리 필터"
-                                    placeholder="카테고리를 선택하세요"
-                                    searchable
-                                    clearable
-                                    radius="lg"
-                                    size="sm"
-                                    className="w-full max-w-xl"
-                                    nothingFoundMessage="일치하는 카테고리가 없습니다."
-                                    maxDropdownHeight={280}
+                                    styles={{
+                                        input: {
+                                            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                                            borderColor: 'rgba(71, 85, 105, 0.7)',
+                                            color: '#E2E8F0',
+                                            fontWeight: 600,
+                                        },
+                                        label: { fontWeight: 600, color: '#CBD5F5' },
+                                    }}
                                 />
-                                <MultiSelect
-                                    data={tagOptions}
-                                    value={selectedTags}
-                                    onChange={setSelectedTags}
-                                    label="태그 필터"
-                                    placeholder="태그를 선택하세요"
-                                    searchable
-                                    clearable
-                                    radius="lg"
-                                    size="sm"
-                                    className="w-full max-w-xl"
-                                    nothingFoundMessage="일치하는 태그가 없습니다."
-                                    maxDropdownHeight={280}
-                                />
-                            </Group>
-                        </Stack>
+                                <Group gap="xs" wrap="wrap">
+                                    <Button
+                                        variant="subtle"
+                                        color="teal"
+                                        radius="lg"
+                                        size="xs"
+                                        onClick={() => {
+                                            const now = new Date();
+                                            const start = new Date(now.getTime() - 90 * DAY_MS);
+                                            setStartDateFilter(toDateInputValue(start));
+                                            setEndDateFilter(toDateInputValue(now));
+                                        }}
+                                    >
+                                        최근 3개월
+                                    </Button>
+                                    <Button
+                                        variant="subtle"
+                                        color="teal"
+                                        radius="lg"
+                                        size="xs"
+                                        onClick={() => {
+                                            const now = new Date();
+                                            const start = new Date(now.getTime() - 180 * DAY_MS);
+                                            setStartDateFilter(toDateInputValue(start));
+                                            setEndDateFilter(toDateInputValue(now));
+                                        }}
+                                    >
+                                        최근 6개월
+                                    </Button>
+                                    <Button
+                                        variant="subtle"
+                                        color="teal"
+                                        radius="lg"
+                                        size="xs"
+                                        onClick={() => {
+                                            const now = new Date();
+                                            const start = new Date(now.getTime() - 365 * DAY_MS);
+                                            setStartDateFilter(toDateInputValue(start));
+                                            setEndDateFilter(toDateInputValue(now));
+                                        }}
+                                    >
+                                        최근 1년
+                                    </Button>
+                                </Group>
+                            </Stack>
+                        </Group>
 
                         <Text size="xs" c="dimmed">
                             좌측 필터에서 스트리머를 선택하거나 검색할 수 있습니다. 시간축(회색 영역)을 드래그하면 확대, 타임라인 영역을 드래그하면 이동하며 Shift+드래그도 확대 기능으로 동작합니다. 더블클릭 시 전체 범위로 복귀합니다. 아래 키워드 필터를 사용하면 입력한 모든 키워드를 포함한 방송 제목만 표시됩니다.
@@ -724,6 +850,8 @@ const TimelinePage = () => {
 
                         <ReplaySummaryCard
                             summary={replaySummary}
+                            selectedCategories={selectedCategories}
+                            selectedTags={selectedTags}
                             onCategoryToggle={(label) => {
                                 setSelectedCategories((prev) =>
                                     prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]
