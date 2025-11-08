@@ -9,6 +9,7 @@ const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 const ROW_HEIGHT = 84;
+const THREE_MONTHS_MS = 90 * DAY_MS;
 
 const parseDate = (value) => {
     if (!value) return null;
@@ -221,6 +222,7 @@ const TimelinePage = () => {
 
     const timelineData = useMemo(() => {
         const parsed = Array.isArray(rawTimeline) ? rawTimeline : [];
+        const cutoffTime = Date.now() - THREE_MONTHS_MS;
         return parsed
             .map((channel) => {
                 const replays = Array.isArray(channel?.replays)
@@ -229,6 +231,7 @@ const TimelinePage = () => {
                             const startDate = parseDate(replay.start);
                             const endDate = parseDate(replay.end);
                             if (!startDate || !endDate || endDate.getTime() <= startDate.getTime()) return null;
+                            if (startDate.getTime() < cutoffTime) return null;
                             return {
                                 ...replay,
                                 startDate,
@@ -242,6 +245,7 @@ const TimelinePage = () => {
 
                 return { ...channel, replays };
             })
+            .filter((channel) => channel.replays.length > 0)
             .sort((a, b) => (b?.follower ?? 0) - (a?.follower ?? 0));
     }, [rawTimeline]);
 
