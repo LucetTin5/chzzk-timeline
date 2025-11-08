@@ -203,7 +203,7 @@ const TimelineCanvas = ({
                     return (
                         <a
                             key={`${channel.channelId ?? channel.name}-${index}-${replay.startDate.toISOString()}`}
-                            className="absolute flex h-6 -translate-y-1/2 cursor-pointer select-none items-center overflow-hidden rounded-full border border-teal-400/40 bg-gradient-to-r from-teal-500/40 via-teal-400/35 to-teal-500/40 transition hover:from-teal-400/55 hover:via-teal-300/55 hover:to-teal-400/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300/70"
+                            className="absolute flex h-6 -translate-y-1/2 cursor-pointer select-none items-center overflow-hidden rounded-full bg-gradient-to-r from-emerald-400/60 via-teal-400/58 to-cyan-400/60 hover:from-emerald-300/78 hover:via-teal-300/78 hover:to-cyan-300/78 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-200/80"
                             style={{
                                 left: `${left}%`,
                                 width: `${width}%`,
