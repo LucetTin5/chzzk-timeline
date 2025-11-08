@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import timelineRaw from '../../../../data/channel_with_replays.json?raw';
 import { Button, Container, Group, Stack, Text, TextInput, Title } from '@mantine/core';
 import { StreamerFilter } from './StreamerFilter.jsx';
 import { TimelineTracks } from './TimelineTracks.jsx';
@@ -188,8 +187,40 @@ const formatTickLabel = (date, unit, showDate, spanMs) => {
 };
 
 const TimelinePage = () => {
+    const [rawTimeline, setRawTimeline] = useState([]);
+    const [loadError, setLoadError] = useState(null);
+
+    useEffect(() => {
+        let aborted = false;
+
+        async function load() {
+            try {
+                const res = await fetch('/channel_with_replays.json');
+                if (!res.ok) {
+                    throw new Error(`타임라인 데이터를 불러오지 못했습니다. 상태 코드: ${res.status}`);
+                }
+                const json = await res.json();
+                if (!aborted) {
+                    setRawTimeline(Array.isArray(json) ? json : []);
+                    setLoadError(null);
+                }
+            } catch (error) {
+                console.error(error);
+                if (!aborted) {
+                    setRawTimeline([]);
+                    setLoadError(error);
+                }
+            }
+        }
+
+        load();
+        return () => {
+            aborted = true;
+        };
+    }, []);
+
     const timelineData = useMemo(() => {
-        const parsed = JSON.parse(timelineRaw ?? '[]');
+        const parsed = Array.isArray(rawTimeline) ? rawTimeline : [];
         return parsed
             .map((channel) => {
                 const replays = Array.isArray(channel?.replays)
@@ -212,7 +243,7 @@ const TimelinePage = () => {
                 return { ...channel, replays };
             })
             .sort((a, b) => (b?.follower ?? 0) - (a?.follower ?? 0));
-    }, []);
+    }, [rawTimeline]);
 
     const bounds = useMemo(() => {
         let min = Number.POSITIVE_INFINITY;
@@ -388,6 +419,11 @@ const TimelinePage = () => {
                                 <Title order={1} size={36} fw={800}>
                                     치지직 타임라인
                                 </Title>
+                                {loadError && (
+                                    <Text c="red.4" size="sm" mt={6}>
+                                        타임라인 데이터를 불러오지 못했습니다. 새로고침하거나 나중에 다시 시도해주세요.
+                                    </Text>
+                                )}
                                 <Text size="md" c="dimmed" mt={6}>
                                     팔로워 수 순으로 정렬된 스트리머 방송 시간을 하나의 축에서 비교해 보세요.
                                 </Text>

@@ -3,9 +3,6 @@ import * as d3 from 'd3';
 import { GraphContainer } from './Graph.jsx';
 import { Header } from './Header.jsx';
 import { Sidebar } from './Sidebar.jsx';
-import rawData from '../../../../server/dd.json?raw';
-
-const data = JSON.parse(rawData);
 
 function useD3Zoom(svgRef, rootRef, zoomRef) {
     useEffect(() => {
@@ -25,6 +22,16 @@ export function MapPage() {
     const svgRef = useRef();
     const rootRef = useRef();
     const zoomRef = useRef();
+    const [data, setData] = useState(null);
+
+    useEffect(() => {
+        async function load() {
+            const res = await fetch('/data.json'); // ✅ Cloudflare Pages 배포 후에도 동일
+            const json = await res.json();
+            setData(json);
+        }
+        load();
+    }, []);
 
     useD3Zoom(svgRef, rootRef, zoomRef);
 
