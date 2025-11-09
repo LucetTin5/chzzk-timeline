@@ -4,21 +4,19 @@ import * as db from './db.js';
 const scrapingChannels = new Set();
 
 export async function scanChannels() {
-  // let lives2 = await fetchLivesPages(1000);
-  // console.log(lives2);
-
+  // manual mode
   // lives = lives.filter((live) => live.adult === false);
-  let lives = [{
-    channel: {
-      channelId: '75cbf189b3bb8f9f687d2aca0d0a382b',
-      channelName: '한동숙',
-      channelImageUrl: 'https://nng-phinf.pstatic.net/MjAyMzEyMTVfMTgx/MDAxNzAyNjAxMjEyMTYw.Hw6vs76aI0L1zeu4fziwXDE35gidFriwTSgAjq7KWxUg.0V3KaKvctGKcVYa76UiDVTXMjXeUSuUezHX6nGU4y9kg.PNG/123.png'
-    }
-  }];
+  // let lives = [{
+  //   channel: {
+  //     channelId: '75cbf189b3bb8f9f687d2aca0d0a382b',
+  //     channelName: '한동숙',
+  //     channelImageUrl: 'https://nng-phinf.pstatic.net/MjAyMzEyMTVfMTgx/MDAxNzAyNjAxMjEyMTYw.Hw6vs76aI0L1zeu4fziwXDE35gidFriwTSgAjq7KWxUg.0V3KaKvctGKcVYa76UiDVTXMjXeUSuUezHX6nGU4y9kg.PNG/123.png'
+  //   }
+  // }];
 
-  // lives = lives.filter((live) => live.adult === false);
+  let lives = await fetchLivesPages(process.env.MIN_LIVE_USER);
 
-  console.log(lives);
+  lives = lives.filter((live) => live.adult === false);
 
   lives = await sequentialMap(lives, async (live) => {
     const { followerCount } = await fetchChannel(live.channel.channelId);
