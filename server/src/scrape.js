@@ -20,11 +20,11 @@ export async function scanChannels() {
 
   lives = await sequentialMap(lives, async (live) => {
     const { followerCount } = await fetchChannel(live.channel.channelId);
-    const { chatChannelId } = await fetchLiveDetail(live.channel.channelId);
-    return { ...live, chatChannelId, channel: { ...live.channel, followerCount } };
+    // const { chatChannelId } = await fetchLiveDetail(live.channel.channelId);
+    return { ...live, channel: { ...live.channel, followerCount } };
   });
   lives = lives.filter((live) => live.channel.followerCount !== undefined);
-  lives = lives.filter((live) => live.chatChannelId !== undefined);
+  // lives = lives.filter((live) => live.chatChannelId !== undefined);
 
   lives.forEach((live) => db.insertChannel(live.channel));
 
