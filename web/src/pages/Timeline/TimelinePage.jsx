@@ -424,23 +424,21 @@ const TimelinePage = () => {
         setViewRange({ start: bounds.minTime, end: bounds.maxTime });
     }, [bounds.minTime, bounds.maxTime]);
 
-    const [filterText, setFilterText] = useState('');
     const [selectedChannelIds, setSelectedChannelIds] = useState([]);
     const [replayTitleFilter, setReplayTitleFilter] = useState('');
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [selectedTags, setSelectedTags] = useState([]);
 
     const filteredTimeline = useMemo(() => {
-        const text = filterText.trim().toLowerCase();
+        if (selectedChannelIds.length === 0) {
+            return timelineData;
+        }
         const selectedSet = new Set(selectedChannelIds);
-
         return timelineData.filter((channel) => {
             const id = channel.channelId ?? channel.name;
-            const matchesText = !text || channel.name.toLowerCase().includes(text);
-            const matchesSelection = selectedChannelIds.length === 0 || selectedSet.has(id);
-            return matchesText && matchesSelection;
+            return selectedSet.has(id);
         });
-    }, [timelineData, filterText, selectedChannelIds]);
+    }, [timelineData, selectedChannelIds]);
 
     const replayKeywords = useMemo(
         () =>
@@ -537,23 +535,11 @@ const TimelinePage = () => {
             .filter(Boolean);
     }, [filteredTimeline, replayKeywords, selectedCategories, selectedTags]);
 
-    const sidebarChannels = useMemo(() => {
-        const text = filterText.trim().toLowerCase();
-        if (!text) return timelineData;
-
-        const selectedSet = new Set(selectedChannelIds);
-        return timelineData.filter((channel) => {
-            const id = channel.channelId ?? channel.name;
-            if (selectedSet.has(id)) return true;
-            return channel.name.toLowerCase().includes(text);
-        });
-    }, [timelineData, filterText, selectedChannelIds]);
-
     const [visibleCount, setVisibleCount] = useState(TIMELINE_BATCH);
 
     useEffect(() => {
         setVisibleCount(TIMELINE_BATCH);
-    }, [filterText, selectedChannelIds, replayKeywords, selectedCategories, selectedTags]);
+    }, [selectedChannelIds, replayKeywords, selectedCategories, selectedTags]);
 
     const viewSpan = Math.max(viewRange.end - viewRange.start, MIN_VIEW_SPAN);
     const tickConfig = useMemo(() => getTickConfig(viewSpan), [viewSpan]);
@@ -653,9 +639,7 @@ const TimelinePage = () => {
             <Container size="100%">
                 <div className="grid gap-10 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
                     <StreamerFilter
-                        filterText={filterText}
-                        onFilterTextChange={setFilterText}
-                        sidebarChannels={sidebarChannels}
+                        channels={timelineData}
                         selectedChannelIds={selectedChannelIds}
                         onToggleChannel={toggleChannelSelection}
                         onResetSelection={() => setSelectedChannelIds([])}

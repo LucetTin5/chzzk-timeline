@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, Badge, Button, Card, Checkbox, Group, ScrollArea, Stack, Text, TextInput } from '@mantine/core';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -27,9 +27,7 @@ const getInitials = (name = '') => {
 const CHANNEL_ROW_HEIGHT = 60;
 
 export function StreamerFilter({
-    filterText,
-    onFilterTextChange,
-    sidebarChannels,
+    channels = [],
     selectedChannelIds,
     onToggleChannel,
     onResetSelection,
@@ -39,6 +37,20 @@ export function StreamerFilter({
     const [metrics, setMetrics] = useState({ left: 0, width: 0 });
     const [isFixedLayout, setIsFixedLayout] = useState(false);
     const viewportRef = useRef(null);
+
+    const [filterText, setFilterText] = useState('');
+
+    const sidebarChannels = useMemo(() => {
+        const text = filterText.trim().toLowerCase();
+        if (!text) return channels;
+
+        const selectedSet = new Set(selectedChannelIds);
+        return channels.filter((channel) => {
+            const id = channel.channelId ?? channel.name;
+            if (selectedSet.has(id)) return true;
+            return channel.name.toLowerCase().includes(text);
+        });
+    }, [channels, filterText, selectedChannelIds]);
 
     const virtualizer = useVirtualizer({
         count: sidebarChannels.length,
@@ -106,7 +118,7 @@ export function StreamerFilter({
 
             <TextInput
                 value={filterText}
-                onChange={(event) => onFilterTextChange(event.currentTarget.value)}
+                onChange={(event) => setFilterText(event.currentTarget.value)}
                 placeholder="스트리머 검색"
                 radius="lg"
                 size="sm"
