@@ -183,7 +183,7 @@ def save_json(data, filename: str):
 if __name__ == "__main__":
     # 예시: 치지직 방송인 "a7e175625fdea5a7d98428302b7aa57f"
     # channel = "a6c4ddb09cdb160478996007bff35296"
-    channel = "ac6a03808bffbe58b3bfb0e25271836e"
+    channel = "75cbf189b3bb8f9f687d2aca0d0a382b"
     out = list_replays_all(channel, size=50, delay=0.2)
 
     # JSON으로 저장
