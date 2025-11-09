@@ -1,0 +1,61 @@
+name: User Sync
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sync-job:
+    runs-on: ubuntu-22.04
+    steps:
+      #
+      #   Setup
+      #
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v2
+
+      #
+      #   Sync
+      #
+      - name: Sync Main
+        run: |
+          cd server
+          npm install
+          node src/index.js
+
+      #
+      #   Extract
+      #
+      - name: Extract
+        run: |
+          python3 extract_channel.py
+
+      - name: Revision
+        run: |
+          git checkout -b sync
+          git config --local user.email "violet.dev.master.bot@gmail.com"
+          git config --local user.name "violet-dev-bot"
+          git config --global pull.rebase false
+          git add server/sqlite.db channels.json
+          git commit -m "Daily Sync"
+          git push --set-upstream origin sync --force
+
+      #
+      #   PR Creation
+      #
+      - name: Today
+        id: ciinfo
+        if: always()
+        run: echo "today=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: Create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr create -B main -H sync --title 'Daily Sync (${{ steps.ciinfo.outputs.today }})' --body 'Daily sync data'
