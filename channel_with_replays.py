@@ -52,16 +52,18 @@ def get_duration_seconds(video: dict) -> int | None:
 def format_time_window(
     publish_date: str, duration_seconds: int | None
 ) -> tuple[str, str]:
-    start_dt = parse_datetime(publish_date)
-    if not start_dt:
+    end_dt = parse_datetime(publish_date)
+    if not end_dt:
         return ("시작 시간 정보 없음", "종료 시간 정보 없음")
 
-    end_dt: datetime | None = None
+    start_dt: datetime | None = None
     if duration_seconds is not None:
-        end_dt = start_dt + timedelta(seconds=duration_seconds)
+        start_dt = end_dt - timedelta(seconds=duration_seconds)
 
-    start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
-    end_str = end_dt.strftime("%Y-%m-%d %H:%M:%S") if end_dt else "종료 시간 정보 없음"
+    start_str = (
+        start_dt.strftime("%Y-%m-%d %H:%M:%S") if start_dt else "시작 시간 정보 없음"
+    )
+    end_str = end_dt.strftime("%Y-%m-%d %H:%M:%S")
     return start_str, end_str
 
 
