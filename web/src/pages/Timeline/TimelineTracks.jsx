@@ -371,10 +371,17 @@ export function TimelineTracks({
     const axisRef = useRef(null);
     const surfaceRef = useRef(null);
     const interactionRef = useRef(null);
+    const [draftRange, setDraftRange] = useState(null);
     const [selectionBox, setSelectionBox] = useState(null);
     const [tooltip, setTooltip] = useState(null);
 
     const { minTime, maxTime, span: boundsSpan } = bounds;
+    const activeRange = draftRange ?? viewRange;
+    const activeViewSpan = draftRange ? Math.max(draftRange.end - draftRange.start, minViewSpan) : viewSpan;
+
+    useEffect(() => {
+        setDraftRange(null);
+    }, [viewRange.start, viewRange.end]);
 
     const enforceRange = useCallback(
         (start, end) => {
@@ -481,7 +488,7 @@ export function TimelineTracks({
                 type: interactionType,
                 pointerId: event.pointerId,
                 startPx: pointerX,
-                viewRangeAtStart: { ...viewRange },
+                viewRangeAtStart: { ...activeRange },
             };
 
             if (interactionType === 'select') {
@@ -493,7 +500,7 @@ export function TimelineTracks({
 
             surfaceElement.setPointerCapture?.(event.pointerId);
         },
-        [clamp, hideTooltip, viewRange]
+        [activeRange, clamp, hideTooltip]
     );
 
     const handlePointerMove = useCallback(
@@ -519,7 +526,7 @@ export function TimelineTracks({
                 const nextStart = interaction.viewRangeAtStart.start - deltaTime;
                 const nextEnd = interaction.viewRangeAtStart.end - deltaTime;
 
-                onViewRangeChange(enforceRange(nextStart, nextEnd));
+                setDraftRange(enforceRange(nextStart, nextEnd));
             } else {
                 const startPx = interaction.startPx;
                 const leftPx = Math.min(startPx, pointerX);
@@ -533,7 +540,7 @@ export function TimelineTracks({
                 });
             }
         },
-        [clamp, enforceRange, onViewRangeChange]
+        [clamp, enforceRange]
     );
 
     const finalizeInteraction = useCallback(
@@ -547,6 +554,7 @@ export function TimelineTracks({
             if (!axisElement || !surfaceElement) {
                 interactionRef.current = null;
                 setSelectionBox(null);
+                setDraftRange(null);
                 return;
             }
 
@@ -554,7 +562,16 @@ export function TimelineTracks({
             if (rect.width > 0) {
                 const pointerX = clamp(event.clientX - rect.left, 0, rect.width);
 
-                if (interaction.type === 'select') {
+                if (interaction.type === 'pan') {
+                    const span = interaction.viewRangeAtStart.end - interaction.viewRangeAtStart.start;
+                    if (span > 0) {
+                        const deltaPx = pointerX - interaction.startPx;
+                        const deltaTime = (deltaPx / rect.width) * span;
+                        const nextStart = interaction.viewRangeAtStart.start - deltaTime;
+                        const nextEnd = interaction.viewRangeAtStart.end - deltaTime;
+                        onViewRangeChange(enforceRange(nextStart, nextEnd));
+                    }
+                } else if (interaction.type === 'select') {
                     const startPx = interaction.startPx;
                     const leftPx = Math.min(startPx, pointerX);
                     const rightPx = Math.max(startPx, pointerX);
@@ -578,6 +595,8 @@ export function TimelineTracks({
             } catch {
                 // ignore
             }
+
+            setDraftRange(null);
         },
         [clamp, enforceRange, hideTooltip, onViewRangeChange]
     );
@@ -587,6 +606,7 @@ export function TimelineTracks({
         setSelectionBox(null);
         hideTooltip();
         onResetView();
+        setDraftRange(null);
     }, [hideTooltip, onResetView]);
 
     if (channelRows.length === 0) {
@@ -607,8 +627,8 @@ export function TimelineTracks({
                 axisRef={axisRef}
                 selectionBox={selectionBox}
                 axisTicks={axisTicks}
-                viewRange={viewRange}
-                viewSpan={viewSpan}
+                viewRange={activeRange}
+                viewSpan={activeViewSpan}
                 clamp={clamp}
             />
 
@@ -619,8 +639,8 @@ export function TimelineTracks({
                     rowHeight={rowHeight}
                     selectionBox={selectionBox}
                     axisTicks={axisTicks}
-                    viewRange={viewRange}
-                    viewSpan={viewSpan}
+                    viewRange={activeRange}
+                    viewSpan={activeViewSpan}
                     clamp={clamp}
                     formatDateRange={formatDateRange}
                     formatDuration={formatDuration}
