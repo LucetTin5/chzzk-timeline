@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, Badge, Button, Card, Checkbox, Group, ScrollArea, Stack, Text, TextInput } from '@mantine/core';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { hangulToKeystrokes, levenshteinDistance } from '../../utils/hangul';
 
 const NAV_OFFSET_REM = 6;
 const NAV_OFFSET = `${NAV_OFFSET_REM}rem`;
@@ -40,20 +41,41 @@ export function StreamerFilter({
 
     const [filterText, setFilterText] = useState('');
 
-    const sidebarChannels = useMemo(() => {
-        const text = filterText.trim().toLowerCase();
-        if (!text) return channels;
+    const channelMetadata = useMemo(() => {
+        return channels.map((channel, index) => {
+            const name = typeof channel?.name === 'string' ? channel.name : '';
+            const condensedName = name.replace(/\s+/g, '');
+            return {
+                channel,
+                id: channel.channelId ?? name ?? `channel-${index}`,
+                nameLower: name.toLowerCase(),
+                keystrokes: hangulToKeystrokes(condensedName),
+            };
+        });
+    }, [channels]);
+
+    const sidebarItems = useMemo(() => {
+        const trimmedFilter = filterText.trim().toLowerCase();
+        const condensedFilter = trimmedFilter.replace(/\s+/g, '');
+
+        if (!condensedFilter) {
+            return channelMetadata;
+        }
 
         const selectedSet = new Set(selectedChannelIds);
-        return channels.filter((channel) => {
-            const id = channel.channelId ?? channel.name;
-            if (selectedSet.has(id)) return true;
-            return channel.name.toLowerCase().includes(text);
+        const filterKeystrokes = hangulToKeystrokes(condensedFilter);
+
+        return channelMetadata.filter((item) => {
+            if (selectedSet.has(item.id)) return true;
+            if (trimmedFilter && item.nameLower.includes(trimmedFilter)) return true;
+            if (item.keystrokes.includes(filterKeystrokes)) return true;
+            if (!filterKeystrokes) return false;
+            return levenshteinDistance(item.keystrokes, filterKeystrokes, 2) <= 1;
         });
-    }, [channels, filterText, selectedChannelIds]);
+    }, [channelMetadata, filterText, selectedChannelIds]);
 
     const virtualizer = useVirtualizer({
-        count: sidebarChannels.length,
+        count: sidebarItems.length,
         getScrollElement: () => viewportRef.current,
         estimateSize: () => CHANNEL_ROW_HEIGHT,
         overscan: 8,
@@ -61,7 +83,7 @@ export function StreamerFilter({
 
     const virtualItems = virtualizer.getVirtualItems();
     const totalSize = virtualizer.getTotalSize();
-    const isEmpty = sidebarChannels.length === 0;
+    const isEmpty = sidebarItems.length === 0;
     useEffect(() => {
         if (typeof window === 'undefined') return undefined;
 
@@ -154,11 +176,12 @@ export function StreamerFilter({
                 ) : (
                     <div style={{ height: totalSize, position: 'relative', paddingRight: '0.5rem' }}>
                         {virtualItems.map((virtualRow) => {
-                            const channel = sidebarChannels[virtualRow.index];
-                            if (!channel) return null;
+                            const item = sidebarItems[virtualRow.index];
+                            if (!item || !item.channel) return null;
 
-                            const id = channel.channelId ?? channel.name ?? `channel-${virtualRow.index}`;
-                            const followerLabel = Number(channel.follower ?? 0).toLocaleString('ko-KR');
+                            const { channel, id } = item;
+                            const channelName = typeof channel?.name === 'string' ? channel.name : '';
+                            const followerLabel = Number(channel?.follower ?? 0).toLocaleString('ko-KR');
 
                             return (
                                 <div
@@ -194,15 +217,20 @@ export function StreamerFilter({
                                             styles={{
                                                 input: { cursor: 'pointer' },
                                             }}
-                                            aria-label={`${channel.name} 선택`}
+                                            aria-label={`${channelName} 선택`}
                                         />
                                         <Group gap="sm" wrap="nowrap" ml="sm">
-                                            <Avatar src={`${channel.image}?type=f120_120_na`} radius="xl" size={40} alt={channel.name}>
-                                                {getInitials(channel.name)}
+                                            <Avatar
+                                                src={channel?.image ? `${channel.image}?type=f120_120_na` : undefined}
+                                                radius="xl"
+                                                size={40}
+                                                alt={channelName}
+                                            >
+                                                {getInitials(channelName)}
                                             </Avatar>
                                             <div className="min-w-0">
                                                 <Text size="sm" fw={600} className="truncate">
-                                                    {channel.name}
+                                                    {channelName}
                                                 </Text>
                                                 <Text size="xs" c="dimmed">
                                                     팔로워 {followerLabel}
