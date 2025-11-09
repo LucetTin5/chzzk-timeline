@@ -44,7 +44,7 @@ jobs:
           git config --local user.email "violet.dev.master.bot@gmail.com"
           git config --local user.name "violet-dev-bot"
           git config --global pull.rebase false
-          git add server/sqlite.db channels.json
+          git add server/sqlite.db
           git commit -m "Daily Sync"
           git push --set-upstream origin sync --force
 

@@ -26,6 +26,7 @@ jobs:
       - name: Extract
         run: |
           pip3 install -r requirements.txt
+          python3 extract_channel.py
           python3 extract_channel_replays.py
           python3 channel_with_replays.py
 

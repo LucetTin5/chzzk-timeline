@@ -3,25 +3,33 @@ import * as db from './db.js';
 
 const scrapingChannels = new Set();
 
+const manualLives = [
+  'https://chzzk.naver.com/57c917f1bc650791d8ca3fec1ebcca18',
+  'https://chzzk.naver.com/981f18d74bceeb1972197209b7400fc4',
+  'https://chzzk.naver.com/a46c7bc953605de49b192a4049328274',
+  'https://chzzk.naver.com/81bd5b50f0c0728128442daf7db626fc',
+  'https://chzzk.naver.com/79bc9b927d5c187f9d8fa5a56b194c37',
+]
+
 export async function scanChannels() {
   // manual mode
-  // lives = lives.filter((live) => live.adult === false);
-  // let lives = [{
-  //   channel: {
-  //     channelId: '75cbf189b3bb8f9f687d2aca0d0a382b',
-  //     channelName: '한동숙',
-  //     channelImageUrl: 'https://nng-phinf.pstatic.net/MjAyMzEyMTVfMTgx/MDAxNzAyNjAxMjEyMTYw.Hw6vs76aI0L1zeu4fziwXDE35gidFriwTSgAjq7KWxUg.0V3KaKvctGKcVYa76UiDVTXMjXeUSuUezHX6nGU4y9kg.PNG/123.png'
+  // let lives = manualLives.map((live) => {
+  //   return {
+  //     channel: {
+  //       channelId: live.split('/').pop(),
+  //     }
   //   }
-  // }];
+  // });
 
+
+  // auto mode
   let lives = await fetchLivesPages(process.env.MIN_LIVE_USER);
-
   lives = lives.filter((live) => live.adult === false);
 
   lives = await sequentialMap(lives, async (live) => {
-    const { followerCount } = await fetchChannel(live.channel.channelId);
+    const additionalData = await fetchChannel(live.channel.channelId);
     // const { chatChannelId } = await fetchLiveDetail(live.channel.channelId);
-    return { ...live, channel: { ...live.channel, followerCount } };
+    return { ...live, channel: { ...live.channel, ...additionalData } };
   });
   lives = lives.filter((live) => live.channel.followerCount !== undefined);
   // lives = lives.filter((live) => live.chatChannelId !== undefined);
