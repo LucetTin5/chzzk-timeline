@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { Avatar, Badge, Group, Text } from '@mantine/core';
 
 const MIN_SEGMENT_WIDTH_PERCENT = 0.6;
+const STICKY_FADE_DISTANCE = 160;
 
 const getInitials = (name = '') => {
     const trimmed = name.trim();
@@ -18,45 +19,101 @@ const EmptyTimelinePlaceholder = () => (
     </div>
 );
 
-const TimelineAxisHeader = ({ axisRef, selectionBox, axisTicks, viewRange, viewSpan, clamp }) => (
-    <div className="sticky top-20 z-20">
-        <div className="relative">
-            <div className="pointer-events-none absolute inset-x-0 -top-20 bottom-0 bg-slate-950/90 backdrop-blur" aria-hidden="true" />
-            <div className="relative pb-3 pt-4">
-                <div className="grid grid-cols-[220px_minmax(0,1fr)] items-end gap-4 text-xs text-slate-400">
-                    <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
-                        Streamer
-                    </Text>
-                    <div ref={axisRef} className="relative h-12">
-                        {selectionBox ? (
-                            <div
-                                className="pointer-events-none absolute inset-y-0 rounded-md bg-teal-400/10 ring-1 ring-teal-400/40"
-                                style={{
-                                    left: `${clamp(selectionBox.leftPercent, 0, 100)}%`,
-                                    width: `${clamp(selectionBox.widthPercent, 0, 100)}%`,
-                                }}
-                            />
-                        ) : null}
-                        <div className="absolute bottom-0 left-0 right-0 border-b border-slate-800" />
-                        {axisTicks.map((tick) => {
-                            const position = ((tick.date.getTime() - viewRange.start) / viewSpan) * 100;
-                            return (
+const TimelineAxisHeader = ({ axisRef, selectionBox, axisTicks, viewRange, viewSpan, clamp }) => {
+    const stickyRef = useRef(null);
+    const stickyStartOffsetRef = useRef(0);
+    const [overlayOpacity, setOverlayOpacity] = useState(0);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        if (!stickyRef.current) return undefined;
+
+        const computeStickyStartOffset = () => {
+            if (!stickyRef.current) return;
+            const element = stickyRef.current;
+            const rect = element.getBoundingClientRect();
+            const computedTop = parseFloat(window.getComputedStyle(element).top || '0');
+            const threshold = Number.isFinite(computedTop) ? computedTop : 0;
+            stickyStartOffsetRef.current = rect.top + window.scrollY - threshold;
+        };
+
+        const handleScroll = () => {
+            if (!stickyRef.current) return;
+            const element = stickyRef.current;
+            const rect = element.getBoundingClientRect();
+            const computedTop = parseFloat(window.getComputedStyle(element).top || '0');
+            const threshold = Number.isFinite(computedTop) ? computedTop : 0;
+
+            if (rect.top > threshold) {
+                stickyStartOffsetRef.current = rect.top + window.scrollY - threshold;
+            }
+
+            const startOffset = stickyStartOffsetRef.current ?? 0;
+            const distance = window.scrollY + threshold - startOffset;
+            const nextOpacity = Math.min(Math.max(distance / STICKY_FADE_DISTANCE, 0), 1);
+            setOverlayOpacity((prev) => (Math.abs(prev - nextOpacity) < 0.01 ? prev : nextOpacity));
+        };
+
+        const handleResize = () => {
+            computeStickyStartOffset();
+            handleScroll();
+        };
+
+        computeStickyStartOffset();
+        handleScroll();
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
+
+    return (
+        <div ref={stickyRef} className="sticky top-22 z-20">
+            <div className="relative">
+                <div
+                    className="pointer-events-none absolute inset-x-0 -top-22 bottom-0 bg-slate-950/90 backdrop-blur transition-opacity duration-100 ease-out"
+                    style={{ opacity: overlayOpacity }}
+                    aria-hidden="true"
+                />
+                <div className="relative pb-3">
+                    <div className="grid grid-cols-[220px_minmax(0,1fr)] items-end gap-4 text-xs text-slate-400">
+                        <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
+                            Streamer
+                        </Text>
+                        <div ref={axisRef} className="relative h-12">
+                            {selectionBox ? (
                                 <div
-                                    key={tick.date.getTime()}
-                                    className="absolute bottom-0 flex translate-x-[-50%] flex-col items-center"
-                                    style={{ left: `${clamp(position, 0, 100)}%` }}
-                                >
-                                    <div className="h-3 w-px bg-slate-700" />
-                                    <span className="mt-1 whitespace-nowrap text-[11px] text-slate-400">{tick.label}</span>
-                                </div>
-                            );
-                        })}
+                                    className="pointer-events-none absolute inset-y-0 rounded-md bg-teal-400/10 ring-1 ring-teal-400/40"
+                                    style={{
+                                        left: `${clamp(selectionBox.leftPercent, 0, 100)}%`,
+                                        width: `${clamp(selectionBox.widthPercent, 0, 100)}%`,
+                                    }}
+                                />
+                            ) : null}
+                            <div className="absolute bottom-0 left-0 right-0 border-b border-slate-800" />
+                            {axisTicks.map((tick) => {
+                                const position = ((tick.date.getTime() - viewRange.start) / viewSpan) * 100;
+                                return (
+                                    <div
+                                        key={tick.date.getTime()}
+                                        className="absolute bottom-0 flex translate-x-[-50%] flex-col items-center"
+                                        style={{ left: `${clamp(position, 0, 100)}%` }}
+                                    >
+                                        <div className="h-3 w-px bg-slate-700" />
+                                        <span className="mt-1 whitespace-nowrap text-[11px] text-slate-400">{tick.label}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 const ChannelSidebar = ({ channelRows, rowHeight }) => (
     <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-slate-900/60">

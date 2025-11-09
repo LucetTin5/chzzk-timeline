@@ -811,7 +811,7 @@ const TimelinePage = () => {
                         onResetSelection={() => setSelectedChannelIds([])}
                         selectedCount={selectedCount}
                     />
-                    <Stack gap="xl">
+                    <Stack gap="sm">
                         <TimelinePageHeader
                             loadError={loadError}
                             totalCount={replayFilteredTimeline.length}
@@ -839,25 +839,6 @@ const TimelinePage = () => {
                             onPresetRangeSelect={applyPresetRange}
                         />
 
-                        <Text size="xs" c="dimmed">
-                            좌측 필터에서 스트리머를 선택하거나 검색할 수 있습니다. 시간축(회색 영역)을 드래그하면 확대, 타임라인 영역을 드래그하면 이동하며 Shift+드래그도 확대 기능으로 동작합니다. 더블클릭 시 전체 범위로 복귀합니다. 아래 키워드 필터를 사용하면 입력한 모든 키워드를 포함한 방송 제목만 표시됩니다.
-                        </Text>
-
-                        <TimelineTracks
-                            axisTicks={axisTicks}
-                            channelRows={channelRows}
-                            viewRange={viewRange}
-                            viewSpan={viewSpan}
-                            rowHeight={ROW_HEIGHT}
-                            formatDateRange={formatDateRange}
-                            formatDuration={formatDuration}
-                            clamp={clamp}
-                            bounds={bounds}
-                            minViewSpan={MIN_VIEW_SPAN}
-                            onViewRangeChange={setViewRange}
-                            onResetView={resetView}
-                        />
-
                         <ReplaySummaryCard
                             summary={replaySummary}
                             selectedCategories={selectedCategories}
@@ -872,6 +853,25 @@ const TimelinePage = () => {
                                     prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]
                                 );
                             }}
+                        />
+
+                        {/* <Text size="xs" c="dimmed">
+                            좌측 필터에서 스트리머를 선택하거나 검색할 수 있습니다. 시간축(회색 영역)을 드래그하면 확대, 타임라인 영역을 드래그하면 이동하며 Shift+드래그도 확대 기능으로 동작합니다. 더블클릭 시 전체 범위로 복귀합니다. 아래 키워드 필터를 사용하면 입력한 모든 키워드를 포함한 방송 제목만 표시됩니다.
+                        </Text> */}
+
+                        <TimelineTracks
+                            axisTicks={axisTicks}
+                            channelRows={channelRows}
+                            viewRange={viewRange}
+                            viewSpan={viewSpan}
+                            rowHeight={ROW_HEIGHT}
+                            formatDateRange={formatDateRange}
+                            formatDuration={formatDuration}
+                            clamp={clamp}
+                            bounds={bounds}
+                            minViewSpan={MIN_VIEW_SPAN}
+                            onViewRangeChange={setViewRange}
+                            onResetView={resetView}
                         />
 
                         {canLoadMore ? (
