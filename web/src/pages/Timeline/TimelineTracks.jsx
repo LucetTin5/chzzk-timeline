@@ -804,7 +804,7 @@ export function TimelineTracks({
         <div
             ref={surfaceRef}
             className="relative"
-            style={{ touchAction: 'none' }}
+            style={{ touchAction: isMobile ? 'pan-y' : 'auto' }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={finalizeInteraction}
