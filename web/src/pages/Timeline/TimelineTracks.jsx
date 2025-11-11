@@ -4,6 +4,7 @@ import { Avatar, Badge, Group, Text } from '@mantine/core';
 
 const MIN_SEGMENT_WIDTH_PERCENT = 0.6;
 const STICKY_FADE_DISTANCE = 160;
+const TOUCH_SLOP_PX = 8;
 
 const getInitials = (name = '') => {
     const trimmed = name.trim();
@@ -470,6 +471,7 @@ export function TimelineTracks({
         if (event.pointerType !== 'touch') return;
         pointerStateRef.current.pointers.set(event.pointerId, {
             clientX: event.clientX,
+            clientY: event.clientY,
         });
     }, []);
 
@@ -518,6 +520,17 @@ export function TimelineTracks({
             initialCenterRatio: centerRatio,
         };
 
+        const surfaceElement = surfaceRef.current;
+        if (surfaceElement?.setPointerCapture) {
+            pointerState.pinch.pointerIds.forEach((pointerId) => {
+                try {
+                    surfaceElement.setPointerCapture(pointerId);
+                } catch {
+                    // ignore
+                }
+            });
+        }
+
         interactionRef.current = null;
         setSelectionBox(null);
         hideTooltip();
@@ -539,7 +552,10 @@ export function TimelineTracks({
         const posB = clamp(pointers[1].clientX - rect.left, 0, rect.width);
         const distance = Math.max(Math.abs(posA - posB), 8);
 
-        let nextSpan = pinch.startSpan * (pinch.initialDistance / distance);
+        if (!pinch.initialDistance) return false;
+        const scale = distance / pinch.initialDistance;
+        const scaleClamped = clamp(scale, minViewSpan / pinch.startSpan, boundsSpan / pinch.startSpan);
+        let nextSpan = pinch.startSpan / scaleClamped;
         nextSpan = Math.max(nextSpan, minViewSpan);
         nextSpan = Math.min(nextSpan, boundsSpan);
 
@@ -616,7 +632,7 @@ export function TimelineTracks({
                 }
             }
 
-            if (event.button !== 0) return;
+            if (event.button !== 0 && event.pointerType !== 'touch') return;
             const axisElement = axisRef.current;
             const surfaceElement = surfaceRef.current;
             if (!axisElement || !surfaceElement) return;
@@ -640,6 +656,8 @@ export function TimelineTracks({
                 pointerId: event.pointerId,
                 startPx: pointerX,
                 viewRangeAtStart: { ...activeRange },
+                startClientY: event.clientY,
+                hasExceededTouchSlop: event.pointerType !== 'touch',
             };
 
             if (interactionType === 'select') {
@@ -649,7 +667,10 @@ export function TimelineTracks({
                 });
             }
 
-            surfaceElement.setPointerCapture?.(event.pointerId);
+            if (event.pointerType !== 'touch') {
+                surfaceElement.setPointerCapture?.(event.pointerId);
+                event.preventDefault();
+            }
         },
         [activeRange, clamp, hideTooltip, startPinchIfPossible, updateTouchPointer]
     );
@@ -683,6 +704,24 @@ export function TimelineTracks({
             if (rect.width <= 0) return;
 
             const pointerX = clamp(event.clientX - rect.left, 0, rect.width);
+            if (event.pointerType === 'touch' && !interaction.hasExceededTouchSlop) {
+                const deltaX = pointerX - interaction.startPx;
+                const deltaY = event.clientY - interaction.startClientY;
+                if (Math.abs(deltaY) > TOUCH_SLOP_PX && Math.abs(deltaY) > Math.abs(deltaX)) {
+                    interactionRef.current = null;
+                    setSelectionBox(null);
+                    setDraftRange(null);
+                    return;
+                }
+                if (Math.abs(deltaX) > TOUCH_SLOP_PX) {
+                    interaction.hasExceededTouchSlop = true;
+                    const surfaceElement = surfaceRef.current;
+                    surfaceElement?.setPointerCapture?.(event.pointerId);
+                    event.preventDefault();
+                } else {
+                    return;
+                }
+            }
 
             if (interaction.type === 'pan') {
                 const span = interaction.viewRangeAtStart.end - interaction.viewRangeAtStart.start;
@@ -804,6 +843,7 @@ export function TimelineTracks({
         <div
             ref={surfaceRef}
             className="relative"
+            style={{ touchAction: isMobile ? 'pan-y pinch-zoom' : 'auto' }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={finalizeInteraction}
