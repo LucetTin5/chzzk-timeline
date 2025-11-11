@@ -217,8 +217,36 @@ const TimelineCanvas = ({
     formatDuration,
     showTooltip,
     hideTooltip,
+    isMobile,
 }) => {
     const timelineHeight = channelRows.length * rowHeight;
+    const linkTapRef = useRef(new Map());
+
+    const handleTimelineLinkPointerDown = useCallback(
+        (event, channel, replay, linkKey, videoUrl) => {
+            if (!isMobile) {
+                hideTooltip();
+                window.open(videoUrl, '_blank', 'noopener,noreferrer');
+                return;
+            }
+            event.preventDefault();
+
+            const now = Date.now();
+            const lastTap = linkTapRef.current.get(linkKey) ?? 0;
+            const TAP_THRESHOLD = 320;
+
+            if (now - lastTap < TAP_THRESHOLD) {
+                linkTapRef.current.delete(linkKey);
+                hideTooltip();
+                window.open(videoUrl, '_blank', 'noopener,noreferrer');
+                return;
+            }
+
+            linkTapRef.current.set(linkKey, now);
+            showTooltip(event, channel, replay);
+        },
+        [hideTooltip, showTooltip]
+    );
 
     return (
         <div
@@ -282,9 +310,12 @@ const TimelineCanvas = ({
 
                     const hasRoomForPadding = width >= 3; // about 1% width ~ few px depending on span
 
+                    const videoUrl = `https://chzzk.naver.com/video/${replay.videoNo}`;
+                    const linkKey = `${channel.channelId ?? channel.name}-${index}-${replay.startDate.toISOString()}`;
+
                     return (
                         <a
-                            key={`${channel.channelId ?? channel.name}-${index}-${replay.startDate.toISOString()}`}
+                            key={linkKey}
                             className="absolute flex h-6 -translate-y-1/2 cursor-pointer select-none items-center overflow-hidden rounded-full bg-gradient-to-r from-emerald-400/60 via-teal-400/58 to-cyan-400/60 hover:from-emerald-300/78 hover:via-teal-300/78 hover:to-cyan-300/78 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-200/80"
                             style={{
                                 left: `${left}%`,
@@ -294,15 +325,12 @@ const TimelineCanvas = ({
                             }}
                             tabIndex={0}
                             aria-label={ariaLabel}
+                            data-timeline-key={linkKey}
                             onMouseEnter={(event) => showTooltip(event, channel, replay)}
                             onFocus={(event) => showTooltip(event, channel, replay)}
                             onMouseLeave={hideTooltip}
                             onBlur={hideTooltip}
-                            onClick={() => {
-                                window.open(`https://chzzk.naver.com/video/${replay.videoNo}`, '_blank');
-                            }}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            onPointerDown={(event) => handleTimelineLinkPointerDown(event, channel, replay, linkKey, videoUrl)}
                             data-timeline-link="true"
                         >
                             <Text
@@ -838,6 +866,7 @@ export function TimelineTracks({
                     formatDuration={formatDuration}
                     showTooltip={showTooltip}
                     hideTooltip={hideTooltip}
+                    isMobile={isMobile}
                 />
             </div>
 
