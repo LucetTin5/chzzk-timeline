@@ -3,9 +3,37 @@ import { NavLink, Routes, Route, Navigate } from 'react-router-dom';
 import MapPage from './pages/Map/MapPage.jsx';
 import TimelinePage from './pages/Timeline/TimelinePage.jsx';
 
+const MapPinIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.5"
+      d="M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.5"
+      d="M19.5 10c0 4.5-7.5 11.25-7.5 11.25S4.5 14.5 4.5 10a7.5 7.5 0 1115 0z"
+    />
+  </svg>
+);
+
+const ClockIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" {...props}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.5"
+      d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  </svg>
+);
+
 const navItems = [
-  { to: '/map', label: '치지직 맵' },
-  { to: '/timeline', label: '치지직 타임라인' },
+  { to: '/map', label: '치지직 맵', Icon: MapPinIcon },
+  { to: '/timeline', label: '치지직 타임라인', Icon: ClockIcon },
 ];
 
 const externalLinks = [
@@ -26,25 +54,27 @@ const App = () => {
 
   return (
     <div className="min-h-screen text-white">
-      <nav className="fixed left-1/2 top-6 z-50 flex -translate-x-1/2 items-center gap-6 rounded-full bg-slate-900/80 px-8 py-3 text-sm font-semibold shadow-lg backdrop-blur">
-        <div className="flex items-center gap-6">
+      <nav className="fixed left-1/2 top-6 z-50 flex -translate-x-1/2 items-center gap-3 lg:gap-6 rounded-full bg-slate-900/80 px-5 lg:px-8 py-2 lg:py-3 text-sm font-semibold shadow-lg backdrop-blur">
+        <div className="flex items-center gap-2.5 lg:gap-6">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
+              aria-label={item.label}
               className={({ isActive }) =>
                 [
-                  'transition-colors',
+                  'inline-flex items-center justify-center lg:justify-start gap-2 rounded-full px-3 py-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300/60',
                   isActive ? 'text-teal-300' : 'text-slate-300 hover:text-white',
                 ].join(' ')
               }
             >
-              {item.label}
+              <item.Icon className="h-5 w-5 flex-none" />
+              <span className="hidden lg:inline">{item.label}</span>
             </NavLink>
           ))}
         </div>
-        <span className="hidden h-6 w-px bg-slate-700/80 sm:inline-block" aria-hidden />
-        <div className="flex items-center gap-4">
+        <span className="hidden h-6 w-px bg-slate-700/80 lg:inline-block" aria-hidden />
+        <div className="flex items-center gap-3 lg:gap-4">
           {externalLinks.map((link) => (
             <a
               key={link.href}
