@@ -19,7 +19,7 @@ const EmptyTimelinePlaceholder = () => (
     </div>
 );
 
-const TimelineAxisHeader = ({ axisRef, selectionBox, axisTicks, viewRange, viewSpan, clamp }) => {
+const TimelineAxisHeader = ({ axisRef, selectionBox, axisTicks, viewRange, viewSpan, clamp, isMobile }) => {
     const stickyRef = useRef(null);
     const stickyStartOffsetRef = useRef(0);
     const [overlayOpacity, setOverlayOpacity] = useState(0);
@@ -79,7 +79,10 @@ const TimelineAxisHeader = ({ axisRef, selectionBox, axisTicks, viewRange, viewS
                     aria-hidden="true"
                 />
                 <div className="relative pb-3">
-                    <div className="grid grid-cols-[220px_minmax(0,1fr)] items-end gap-4 text-xs text-slate-400">
+                    <div
+                        className={`grid items-end gap-2 text-xs text-slate-400 ${isMobile ? 'grid-cols-[92px_minmax(0,1fr)]' : 'grid-cols-[220px_minmax(0,1fr)]'
+                            }`}
+                    >
                         <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
                             Streamer
                         </Text>
@@ -115,7 +118,7 @@ const TimelineAxisHeader = ({ axisRef, selectionBox, axisTicks, viewRange, viewS
     );
 };
 
-const ChannelSidebar = ({ channelRows, rowHeight }) => (
+const ChannelSidebar = ({ channelRows, rowHeight, isMobile }) => (
     <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-slate-900/60">
         <div className="pointer-events-none absolute inset-0">
             {channelRows.slice(1).map((_, dividerIndex) => (
@@ -131,30 +134,52 @@ const ChannelSidebar = ({ channelRows, rowHeight }) => (
             const channelUrl = channel?.channelId ? `https://chzzk.naver.com/${channel.channelId}` : null;
 
             const content = (
-                <Group gap="sm" wrap="nowrap" className="px-4" style={{ height: rowHeight }}>
-                    <Avatar
-                        src={`${channel.image}?type=f120_120_na`}
-                        radius="xl"
-                        size={60}
-                        alt={channel.name}
-                        className="shadow-md ring-1 ring-slate-800/60"
-                    >
-                        {getInitials(channel.name)}
-                    </Avatar>
-                    <div className="min-w-0">
-                        <Text size="sm" fw={600} className="truncate">
-                            {channel.name}
-                        </Text>
-                        <Group gap={6} mt={4} wrap="wrap">
-                            <Badge size="sm" radius="lg" variant="light" color="teal">
-                                팔로워 {Number(channel.follower ?? 0).toLocaleString('ko-KR')}
-                            </Badge>
-                            <Badge size="sm" radius="lg" variant="light" color="blue">
-                                리플레이 {channel.replays.length.toLocaleString('ko-KR')}개
-                            </Badge>
+                <div
+                    className={isMobile ? 'flex h-full flex-col items-center justify-center px-1 text-center' : 'px-4'}
+                    style={{ height: rowHeight }}
+                >
+                    {isMobile ? (
+                        <div className="flex flex-col items-center gap-2">
+                            <Avatar
+                                src={`${channel.image}?type=f120_120_na`}
+                                radius="xl"
+                                size={42}
+                                alt={channel.name}
+                                className="shadow-md ring-1 ring-slate-800/60"
+                            >
+                                {getInitials(channel.name)}
+                            </Avatar>
+                            <Text size="xs" fw={600} className="max-w-[100px] truncate text-[10.5px] leading-tight">
+                                {channel.name}
+                            </Text>
+                        </div>
+                    ) : (
+                        <Group gap="sm" wrap="nowrap" style={{ height: '100%' }}>
+                            <Avatar
+                                src={`${channel.image}?type=f120_120_na`}
+                                radius="xl"
+                                size={60}
+                                alt={channel.name}
+                                className="shadow-md ring-1 ring-slate-800/60"
+                            >
+                                {getInitials(channel.name)}
+                            </Avatar>
+                            <div className="min-w-0">
+                                <Text size="sm" fw={600} className="truncate">
+                                    {channel.name}
+                                </Text>
+                                <Group gap={6} mt={4} wrap="wrap">
+                                    <Badge size="sm" radius="lg" variant="light" color="teal">
+                                        팔로워 {Number(channel.follower ?? 0).toLocaleString('ko-KR')}
+                                    </Badge>
+                                    <Badge size="sm" radius="lg" variant="light" color="blue">
+                                        리플레이 {channel.replays.length.toLocaleString('ko-KR')}개
+                                    </Badge>
+                                </Group>
+                            </div>
                         </Group>
-                    </div>
-                </Group>
+                    )}
+                </div>
             );
 
             if (channelUrl) {
@@ -374,6 +399,26 @@ export function TimelineTracks({
     const [draftRange, setDraftRange] = useState(null);
     const [selectionBox, setSelectionBox] = useState(null);
     const [tooltip, setTooltip] = useState(null);
+    const [isMobile, setIsMobile] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return !window.matchMedia('(min-width: 1024px)').matches;
+    });
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+
+        const mediaQuery = window.matchMedia('(min-width: 1024px)');
+        const handleChange = () => {
+            setIsMobile(!mediaQuery.matches);
+        };
+
+        handleChange();
+        mediaQuery.addEventListener('change', handleChange);
+
+        return () => {
+            mediaQuery.removeEventListener('change', handleChange);
+        };
+    }, []);
 
     const { minTime, maxTime, span: boundsSpan } = bounds;
     const activeRange = draftRange ?? viewRange;
@@ -630,10 +675,14 @@ export function TimelineTracks({
                 viewRange={activeRange}
                 viewSpan={activeViewSpan}
                 clamp={clamp}
+                isMobile={isMobile}
             />
 
-            <div className="grid grid-cols-[220px_minmax(0,1fr)] items-start gap-4">
-                <ChannelSidebar channelRows={channelRows} rowHeight={rowHeight} />
+            <div
+                className={`grid items-start gap-2 ${isMobile ? 'grid-cols-[92px_minmax(0,1fr)]' : 'grid-cols-[220px_minmax(0,1fr)]'
+                    }`}
+            >
+                <ChannelSidebar channelRows={channelRows} rowHeight={rowHeight} isMobile={isMobile} />
                 <TimelineCanvas
                     channelRows={channelRows}
                     rowHeight={rowHeight}
