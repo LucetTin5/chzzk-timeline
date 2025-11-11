@@ -376,7 +376,6 @@ const getTickConfig = (spanMs, isMobile = false) => {
 
     if (!isMobile) return baseConfig;
 
-    console.log(spanMs, baseConfig);
     const doubledStep = Math.max(baseConfig.step * 3, 1);
     return { ...baseConfig, step: doubledStep };
 };

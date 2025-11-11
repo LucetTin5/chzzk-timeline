@@ -19,7 +19,7 @@ const EmptyTimelinePlaceholder = () => (
     </div>
 );
 
-const TimelineAxisHeader = ({ axisRef, selectionBox, axisTicks, viewRange, viewSpan, clamp, isMobile }) => {
+const TimelineAxisHeader = ({ axisRef, selectionBox, axisTicks, viewRange, viewSpan, clamp, isMobile, handleTouchEnd }) => {
     const stickyRef = useRef(null);
     const stickyStartOffsetRef = useRef(0);
     const [overlayOpacity, setOverlayOpacity] = useState(0);
@@ -86,7 +86,7 @@ const TimelineAxisHeader = ({ axisRef, selectionBox, axisTicks, viewRange, viewS
                         <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
                             Streamer
                         </Text>
-                        <div ref={axisRef} className="relative h-12">
+                        <div ref={axisRef} className="relative h-12" onClick={handleTouchEnd}>
                             {selectionBox ? (
                                 <div
                                     className="pointer-events-none absolute inset-y-0 rounded-md bg-teal-400/10 ring-1 ring-teal-400/40"
@@ -825,6 +825,16 @@ export function TimelineTracks({
         setDraftRange(null);
     }, [hideTooltip, onResetView]);
 
+    // 모바일에서 더블 클릭 허용하기 위해 
+    const lastTapRef = useRef(0);
+    const handleTouchEnd = () => {
+        const now = Date.now();
+        if (now - lastTapRef.current < 300) {
+            handleResetView();
+        }
+        lastTapRef.current = now;
+    };
+
     if (channelRows.length === 0) {
         return <EmptyTimelinePlaceholder />;
     }
@@ -848,6 +858,7 @@ export function TimelineTracks({
                 viewSpan={activeViewSpan}
                 clamp={clamp}
                 isMobile={isMobile}
+                handleTouchEnd={handleTouchEnd}
             />
 
             <div
