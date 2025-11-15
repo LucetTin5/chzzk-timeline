@@ -1,5 +1,6 @@
 use color_eyre::eyre::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -8,21 +9,27 @@ use crate::data::models::{ChatLog, ChatMessage};
 use chrono::{FixedOffset, TimeZone};
 use rayon::prelude::*;
 
+/// 파일 이름에서 video_id를 추출하기 위한 정규표현식
+static FILENAME_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"chatLog-(\d+)\.log").expect("Invalid filename regex"));
+
+/// 채팅 로그 한 줄을 파싱하기 위한 정규표현식
+static CHAT_LINE_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] ([^:]+): (.+) \(([^)]+)\)")
+        .expect("Invalid chat line regex")
+});
+
 /// 파일 이름에서 video_id를 추출합니다.
 /// `chatLog-{video_id}.log` 형식에서 video_id를 추출합니다.
 pub fn extract_video_id_from_filename(filename: &str) -> Option<u64> {
-    let re = Regex::new(r"chatLog-(\d+)\.log").ok()?;
-    let caps = re.captures(filename)?;
+    let caps = FILENAME_REGEX.captures(filename)?;
     caps.get(1)?.as_str().parse().ok()
 }
 
 /// 채팅 로그 파일 한 줄을 파싱합니다.
 /// 형식: `[2025-10-24 18:03:15] 닉네임: 메시지 (user_id)`
 fn parse_chat_line(line: &str) -> Option<ChatMessage> {
-    // 정규표현식: \[날짜 시간\] 닉네임: 메시지 (user_id)
-    let re =
-        Regex::new(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] ([^:]+): (.+) \(([^)]+)\)").ok()?;
-    let caps = re.captures(line)?;
+    let caps = CHAT_LINE_REGEX.captures(line)?;
 
     // 타임스탬프 파싱
     let timestamp_str = caps.get(1)?.as_str();
