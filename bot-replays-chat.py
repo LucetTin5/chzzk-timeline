@@ -194,7 +194,7 @@ def process_replays_chat(filtered_replays_json_path, output_dir=None):
                 else:
                     all_video_nos.append(video_no)
             ll += 1
-            if ll > 5:
+            if ll > 10:
                 break
 
     print(f"📹 총 {len(all_video_nos) + len(existing_files)}개 replay 발견")

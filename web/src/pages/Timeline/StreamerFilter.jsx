@@ -32,6 +32,7 @@ export const CONTENT_FILTER_GROUPS = [
     { label: '스타데이즈', group: '그룹', category: '', description: '', keywords: ['스타데이즈'], tags: ['스타데이즈'] },
     { label: '하나비', group: '그룹', category: '', description: '', keywords: ['하나비'], tags: ['하나비'] },
     { label: '메이비', group: '그룹', category: '', description: '', keywords: ['메이비'], tags: ['메이비'] },
+    { label: '리액트kr', group: '그룹', category: '', description: '', keywords: ['리액트kr'], tags: ['리액트kr'] },
 ];
 
 const NAV_OFFSET_REM = 6;
