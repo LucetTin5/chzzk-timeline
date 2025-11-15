@@ -714,13 +714,18 @@ const TimelinePage = () => {
         const requireCategory = categorySet.size > 0;
         const requireTags = tagList.length > 0;
 
-        // 컨텐츠 필터 그룹 처리
+        // 컨텐츠 필터 그룹 처리 - 스트리머 서버와 그룹을 분리
         const requireContentFilter = selectedContentGroups.length > 0;
-        let contentFilterGroups = null;
+        let streamerServerGroups = null;
+        let contentGroups = null;
         if (requireContentFilter) {
-            contentFilterGroups = selectedContentGroups
+            const allFilterGroups = selectedContentGroups
                 .map((label) => CONTENT_FILTER_GROUPS.find((g) => g.label === label))
                 .filter(Boolean);
+
+            // 스트리머 서버와 그룹을 분리
+            streamerServerGroups = allFilterGroups.filter((g) => g.group === '스트리머 서버');
+            contentGroups = allFilterGroups.filter((g) => g.group === '그룹');
         }
 
         if (
@@ -742,32 +747,64 @@ const TimelinePage = () => {
                         return false;
                     }
 
-                    // 컨텐츠 필터 그룹 처리
+                    // 컨텐츠 필터 그룹 처리 - 스트리머 서버와 그룹을 AND로 결합
                     if (requireContentFilter) {
-                        const matchesContentFilter = contentFilterGroups.some((group) => {
-                            // 키워드로 제목 확인
-                            if (group.keywords && group.keywords.length > 0) {
-                                const titleMatch = group.keywords.some((keyword) =>
-                                    title.includes(keyword.toLowerCase())
-                                );
-                                if (titleMatch) return true;
-                            }
-
-                            // 태그 확인
-                            if (group.tags && group.tags.length > 0) {
-                                if (Array.isArray(replay?.tags)) {
-                                    const normalizedTags = replay.tags
-                                        .map((tag) => (typeof tag === 'string' ? tag.trim() : ''))
-                                        .filter(Boolean);
-                                    const tagMatch = group.tags.some((tag) => normalizedTags.includes(tag));
-                                    if (tagMatch) return true;
+                        // 스트리머 서버 필터 (OR)
+                        let matchesStreamerServer = true;
+                        if (streamerServerGroups && streamerServerGroups.length > 0) {
+                            matchesStreamerServer = streamerServerGroups.some((group) => {
+                                // 키워드로 제목 확인
+                                if (group.keywords && group.keywords.length > 0) {
+                                    const titleMatch = group.keywords.some((keyword) =>
+                                        title.includes(keyword.toLowerCase())
+                                    );
+                                    if (titleMatch) return true;
                                 }
-                            }
 
-                            return false;
-                        });
+                                // 태그 확인
+                                if (group.tags && group.tags.length > 0) {
+                                    if (Array.isArray(replay?.tags)) {
+                                        const normalizedTags = replay.tags
+                                            .map((tag) => (typeof tag === 'string' ? tag.trim() : ''))
+                                            .filter(Boolean);
+                                        const tagMatch = group.tags.some((tag) => normalizedTags.includes(tag));
+                                        if (tagMatch) return true;
+                                    }
+                                }
 
-                        if (!matchesContentFilter) return false;
+                                return false;
+                            });
+                        }
+
+                        // 그룹 필터 (OR)
+                        let matchesContentGroup = true;
+                        if (contentGroups && contentGroups.length > 0) {
+                            matchesContentGroup = contentGroups.some((group) => {
+                                // 키워드로 제목 확인
+                                if (group.keywords && group.keywords.length > 0) {
+                                    const titleMatch = group.keywords.some((keyword) =>
+                                        title.includes(keyword.toLowerCase())
+                                    );
+                                    if (titleMatch) return true;
+                                }
+
+                                // 태그 확인
+                                if (group.tags && group.tags.length > 0) {
+                                    if (Array.isArray(replay?.tags)) {
+                                        const normalizedTags = replay.tags
+                                            .map((tag) => (typeof tag === 'string' ? tag.trim() : ''))
+                                            .filter(Boolean);
+                                        const tagMatch = group.tags.some((tag) => normalizedTags.includes(tag));
+                                        if (tagMatch) return true;
+                                    }
+                                }
+
+                                return false;
+                            });
+                        }
+
+                        // 스트리머 서버와 그룹을 AND로 결합
+                        if (!matchesStreamerServer || !matchesContentGroup) return false;
                     }
 
                     if (requireCategory) {
