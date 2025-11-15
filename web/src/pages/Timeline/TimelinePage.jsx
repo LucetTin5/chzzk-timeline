@@ -124,7 +124,7 @@ const TimelinePageHeader = ({ loadError, totalCount }) => (
                 </Text>
             )}
             <Text size="md" c="dimmed" mt={6}>
-                팔로워 수 순으로 정렬된 스트리머 방송 시간을 하나의 축에서 비교해 보세요.
+                스트리머의 방송 시간을 하나의 축에서 비교해 보세요.
             </Text>
             <Text size="xs" c="dimmed" mt={6}>
                 현재 {totalCount.toLocaleString('ko-KR')}명의 스트리머가 조건에 맞습니다.
