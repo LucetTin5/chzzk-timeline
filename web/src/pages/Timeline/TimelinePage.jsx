@@ -464,6 +464,7 @@ const formatTickLabel = (date, unit, showDate, spanMs) => {
 const TimelinePage = () => {
     const [rawTimeline, setRawTimeline] = useState([]);
     const [loadError, setLoadError] = useState(null);
+    const [videoWithChatCounts, setVideoWithChatCounts] = useState(new Set());
     const defaultDateRangeRef = useRef(createDefaultDateRange());
     const [startDateFilter, setStartDateFilter] = useState(defaultDateRangeRef.current.start);
     const [endDateFilter, setEndDateFilter] = useState(defaultDateRangeRef.current.end);
@@ -499,6 +500,44 @@ const TimelinePage = () => {
         }
 
         load();
+        return () => {
+            aborted = true;
+        };
+    }, []);
+
+    // video_with_chat_counts.json 로드
+    useEffect(() => {
+        let aborted = false;
+
+        async function loadChatCounts() {
+            try {
+                const response = await fetch('/video_with_chat_counts.json');
+                if (!response.ok) {
+                    console.warn('video_with_chat_counts.json을 불러오지 못했습니다.');
+                    return;
+                }
+
+                const data = await response.json();
+                const videos = Array.isArray(data?.videos) ? data.videos : [];
+
+                // videoId를 Set으로 변환하여 빠른 조회
+                const videoIdSet = new Set();
+                videos.forEach((video) => {
+                    if (video.videoId) {
+                        videoIdSet.add(String(video.videoId));
+                    }
+                });
+
+                if (!aborted) {
+                    setVideoWithChatCounts(videoIdSet);
+                }
+            } catch (error) {
+                console.warn('video_with_chat_counts.json을 불러오는 중 오류:', error);
+            }
+        }
+
+        loadChatCounts();
+
         return () => {
             aborted = true;
         };
@@ -895,6 +934,7 @@ const TimelinePage = () => {
                             minViewSpan={MIN_VIEW_SPAN}
                             onViewRangeChange={setViewRange}
                             onResetView={resetView}
+                            videoWithChatCounts={videoWithChatCounts}
                         />
 
                         {canLoadMore ? (

@@ -289,6 +289,7 @@ const TimelineCanvas = ({
     hideTooltip,
     isMobile,
     hoverPosition,
+    videoWithChatCounts,
 }) => {
     const timelineHeight = channelRows.length * rowHeight;
     const linkTapRef = useRef(new Map());
@@ -387,18 +388,38 @@ const TimelineCanvas = ({
 
                     const hasRoomForPadding = width >= 3; // about 1% width ~ few px depending on span
 
-                    const videoUrl = `https://chzzk.naver.com/video/${replay.videoNo}`;
+                    // const videoUrl = `https://chzzk.naver.com/video/${replay.videoNo}`;
+                    const videoUrl = `/chat/${replay.videoNo}`;
                     const linkKey = `${channel.channelId ?? channel.name}-${index}-${replay.startDate.toISOString()}`;
+
+                    // video_with_chat_counts.json에 해당 비디오가 있는지 확인
+                    const hasChatCounts = videoWithChatCounts?.has(String(replay.videoId)) || videoWithChatCounts?.has(String(replay.videoNo));
+
+                    // 주황색 계열 그라데이션 클래스 (chat counts가 있는 경우)
+                    const gradientClass = hasChatCounts
+                        ? 'bg-gradient-to-r from-orange-400/60 via-amber-400/58 to-yellow-400/60 hover:from-orange-300/78 hover:via-amber-300/78 hover:to-yellow-300/78'
+                        : 'bg-gradient-to-r from-emerald-400/60 via-teal-400/58 to-cyan-400/60 hover:from-emerald-300/78 hover:via-teal-300/78 hover:to-cyan-300/78';
+
+                    // 주황색 계열 그림자
+                    const boxShadow = hasChatCounts
+                        ? '0 6px 14px -8px rgba(251, 146, 60, 0.45)'
+                        : '0 6px 14px -8px rgba(45, 212, 191, 0.45)';
+
+                    // 주황색 계열 텍스트 색상
+                    const textColorClass = hasChatCounts ? 'text-orange-50' : 'text-teal-50';
+                    const textShadow = hasChatCounts
+                        ? '0 1px 2px rgba(154, 52, 18, 0.45)'
+                        : '0 1px 2px rgba(15, 118, 110, 0.45)';
 
                     return (
                         <a
                             key={linkKey}
-                            className="absolute flex h-6 -translate-y-1/2 cursor-pointer select-none items-center overflow-hidden rounded-full bg-gradient-to-r from-emerald-400/60 via-teal-400/58 to-cyan-400/60 hover:from-emerald-300/78 hover:via-teal-300/78 hover:to-cyan-300/78 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-200/80"
+                            className={`absolute flex h-6 -translate-y-1/2 cursor-pointer select-none items-center overflow-hidden rounded-full ${gradientClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-200/80`}
                             style={{
                                 left: `${left}%`,
                                 width: `${width}%`,
                                 top,
-                                boxShadow: '0 6px 14px -8px rgba(45, 212, 191, 0.45)',
+                                boxShadow,
                             }}
                             tabIndex={0}
                             aria-label={ariaLabel}
@@ -413,9 +434,9 @@ const TimelineCanvas = ({
                             <Text
                                 size="xs"
                                 fw={600}
-                                className="w-full truncate text-teal-50"
+                                className={`w-full truncate ${textColorClass}`}
                                 style={{
-                                    textShadow: '0 1px 2px rgba(15, 118, 110, 0.45)',
+                                    textShadow,
                                     paddingLeft: hasRoomForPadding ? '8px' : '0px',
                                     paddingRight: hasRoomForPadding ? '8px' : '0px',
                                 }}
@@ -497,6 +518,7 @@ export function TimelineTracks({
     minViewSpan,
     onViewRangeChange,
     onResetView,
+    videoWithChatCounts,
 }) {
     const axisRef = useRef(null);
     const surfaceRef = useRef(null);
@@ -1042,6 +1064,7 @@ export function TimelineTracks({
                     hideTooltip={hideTooltip}
                     isMobile={isMobile}
                     hoverPosition={showHoverGuide ? hoverPosition : null}
+                    videoWithChatCounts={videoWithChatCounts}
                 />
             </div>
 
@@ -1072,5 +1095,6 @@ TimelineTracks.propTypes = {
     minViewSpan: PropTypes.number.isRequired,
     onViewRangeChange: PropTypes.func.isRequired,
     onResetView: PropTypes.func.isRequired,
+    videoWithChatCounts: PropTypes.instanceOf(Set),
 };
 
