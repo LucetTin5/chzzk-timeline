@@ -5,6 +5,7 @@ import { VideoHeader } from './VideoHeader.jsx';
 import { VideoInfo } from './VideoInfo.jsx';
 import { ChatSearchSection } from './ChatSearchSection.jsx';
 import { ChatKeywordRanking } from './ChatKeywordRanking.jsx';
+import { RelatedVideos } from './RelatedVideos.jsx';
 
 const ChatPage = () => {
     const { videoId } = useParams();
@@ -261,7 +262,7 @@ const ChatPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950/95 pt-28 text-slate-100">
+        <div className="min-h-screen bg-slate-950/95 pt-28 pb-8 text-slate-100">
             <Container size="xl" className="mx-auto">
                 <div className="grid grid-cols-1 lg:grid-cols-[400px_minmax(864px,1fr)_400px] gap-6 items-start justify-center max-w-full">
                     {/* 왼쪽: 헤더 */}
@@ -310,6 +311,9 @@ const ChatPage = () => {
                                     onSearchKeywordChange={setSearchKeyword}
                                 />
                             ) : null}
+
+                            {/* 유사한 영상 */}
+                            <RelatedVideos videoId={videoId} />
                         </Stack>
                     </div>
 
