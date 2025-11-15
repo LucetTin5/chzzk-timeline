@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Container, Stack, Text } from '@mantine/core';
-import ChatTimelineChart from './ChatTimelineChart.jsx';
 import { VideoHeader } from './VideoHeader.jsx';
 import { VideoInfo } from './VideoInfo.jsx';
-import { ChatTooltip } from './ChatTooltip.jsx';
+import { ChatSearchSection } from './ChatSearchSection.jsx';
 
 const ChatPage = () => {
     const { videoId } = useParams();
@@ -18,6 +17,9 @@ const ChatPage = () => {
     const [hoveredPoint, setHoveredPoint] = useState(null);
     const [tooltipPosition, setTooltipPosition] = useState(null);
     const [isFirstRender, setIsFirstRender] = useState(true);
+    const [chatLogText, setChatLogText] = useState(null);
+    const [chatLogLoading, setChatLogLoading] = useState(false);
+    const [chatLogError, setChatLogError] = useState(null);
 
     useEffect(() => {
         let aborted = false;
@@ -97,6 +99,45 @@ const ChatPage = () => {
         }
 
         loadVideoData();
+
+        return () => {
+            aborted = true;
+        };
+    }, [videoId]);
+
+    // Chat log 다운로드
+    useEffect(() => {
+        if (!videoId) return;
+
+        let aborted = false;
+
+        async function loadChatLog() {
+            try {
+                setChatLogLoading(true);
+                setChatLogError(null);
+
+                const url = `https://chzzk-timeline-static.pages.dev/chatLog-${videoId}.log`;
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`Chat log를 불러오지 못했습니다. 상태 코드: ${response.status}`);
+                }
+
+                const text = await response.text();
+                if (!aborted) {
+                    setChatLogText(text);
+                    setChatLogLoading(false);
+                }
+            } catch (err) {
+                console.warn('Chat log 로드 실패:', err);
+                if (!aborted) {
+                    setChatLogError(err);
+                    setChatLogLoading(false);
+                }
+            }
+        }
+
+        loadChatLog();
 
         return () => {
             aborted = true;
@@ -186,7 +227,7 @@ const ChatPage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-950/95 pt-28 pb-20 text-slate-100">
+            <div className="min-h-screen bg-slate-950/95 pt-28 text-slate-100">
                 <Container size="xl">
                     <div className="flex items-center justify-center py-20">
                         <Text size="lg" c="dimmed">
@@ -200,7 +241,7 @@ const ChatPage = () => {
 
     if (error || !videoData) {
         return (
-            <div className="min-h-screen bg-slate-950/95 pt-28 pb-20 text-slate-100">
+            <div className="min-h-screen bg-slate-950/95 pt-28 text-slate-100">
                 <Container size="xl">
                     <div className="flex items-center justify-center py-20">
                         <div className="text-center">
@@ -218,7 +259,7 @@ const ChatPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950/95 pt-28 pb-20 text-slate-100">
+        <div className="min-h-screen bg-slate-950/95 pt-28 text-slate-100">
             <Container size="xl">
                 <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start">
                     {/* 왼쪽: 헤더 */}
@@ -234,7 +275,7 @@ const ChatPage = () => {
 
                     {/* 오른쪽: VOD 영상과 차트 */}
                     <div className="min-w-0">
-                        <Stack gap="xl">
+                        <Stack gap="xm">
                             {/* VOD 영상 */}
                             {videoInfo?.replay?.videoNo ? (
                                 <div className="overflow-hidden rounded-3xl border border-slate-800/70 bg-slate-900/95 p-6 shadow-lg shadow-slate-900/40">
@@ -256,51 +297,18 @@ const ChatPage = () => {
                                 </div>
                             ) : null}
 
-                            {/* 차트 */}
+                            {/* 채팅 검색/타임라인 */}
                             {videoData.timeline && videoData.timeline.length > 0 ? (
-                                <div
-                                    ref={chartContainerRef}
-                                    className="overflow-hidden rounded-3xl border border-slate-800/70 bg-slate-900/95 p-6 shadow-lg shadow-slate-900/40"
-                                >
-                                    <Text size="lg" fw={700} mb={6} className="text-slate-100">
-                                        채팅 타임라인
-                                    </Text>
-                                    <Text size="sm" c="dimmed" mb={8}>
-                                        시간별 채팅 수 변화
-                                    </Text>
-                                    <div className="w-full">
-                                        <ChatTimelineChart
-                                            ref={chartSvgRef}
-                                            timeline={videoData.timeline}
-                                            width={chartWidth}
-                                            height={350}
-                                            startTime={parsedStartTime}
-                                            hoveredPoint={hoveredPoint}
-                                            onHover={(point) => {
-                                                setHoveredPoint(point);
-                                            }}
-                                            onPointScreenPosition={handlePointScreenPosition}
-                                            onMouseMove={(pos) => {
-                                                // 차트 위에서는 즉시 업데이트, tooltipPosition은 hoveredPoint 변경 시 업데이트됨
-                                            }}
-                                            onMouseLeave={() => {
-                                                setHoveredPoint(null);
-                                            }}
-                                        />
-                                    </div>
-                                </div>
+                                <ChatSearchSection
+                                    videoId={videoId}
+                                    startTime={parsedStartTime}
+                                    chatLogText={chatLogText}
+                                    defaultTimeline={videoData.timeline}
+                                />
                             ) : null}
                         </Stack>
                     </div>
                 </div>
-
-                {/* 툴팁 - 화면 전체에서 표시 */}
-                <ChatTooltip
-                    hoveredPoint={hoveredPoint}
-                    tooltipPosition={tooltipPosition}
-                    isFirstRender={isFirstRender}
-                    parsedStartTime={parsedStartTime}
-                />
             </Container>
         </div>
     );

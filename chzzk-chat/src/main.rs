@@ -63,10 +63,10 @@ async fn run_analysis_chat(opts: &AnalysisChatOpt) -> Result<()> {
     let (channels, chat_logs) = load_channels_and_chat_logs(opts)?;
 
     // 비디오별 채팅 타임라인 추출
-    // data::timeline::extract_video_chat_timeline_count(
-    //     &chat_logs,
-    //     "../web/public/video_with_chat_counts.json",
-    // )?;
+    data::timeline::extract_video_chat_timeline_count(
+        &chat_logs,
+        "../web/public/video_with_chat_counts.json",
+    )?;
 
     // 고유 사용자 수 만 명 이상인 chat_log 필터링
     utils::log("고유 사용자 수 기준 필터링 중...");
@@ -80,7 +80,7 @@ async fn run_analysis_chat(opts: &AnalysisChatOpt) -> Result<()> {
 
     // run_channel_distance_analysis(&channels, &chat_logs)?;
 
-    run_cluster_similar_replays(&channels, &chat_logs);
+    // run_cluster_similar_replays(&channels, &chat_logs);
 
     Ok(())
 }

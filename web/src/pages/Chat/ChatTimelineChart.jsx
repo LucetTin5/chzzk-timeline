@@ -2,17 +2,18 @@ import React, { useEffect, useRef, useState } from 'react';
 import { formatTime, formatTimeShort } from './utils.js';
 
 const ChatTimelineChart = React.forwardRef(({ timeline, width, height, onHover, onMouseMove, onMouseLeave, hoveredPoint, onPointScreenPosition, startTime }, ref) => {
-    if (!timeline || timeline.length === 0) return null;
-
     const svgRef = useRef(null);
     const [mouseX, setMouseX] = useState(0);
 
     // ref 전달
     React.useImperativeHandle(ref, () => svgRef.current);
 
-    const maxCount = Math.max(...timeline.map((d) => d.count));
+    // 빈 배열인 경우 빈 차트 표시를 위한 더미 데이터
+    const displayTimeline = (!timeline || timeline.length === 0) ? [{ time: 0, count: 0 }] : timeline;
+
+    const maxCount = Math.max(...displayTimeline.map((d) => d.count));
     const minCount = 0; // Y축은 항상 0부터 시작
-    const maxTime = Math.max(...timeline.map((d) => d.time));
+    const maxTime = Math.max(...displayTimeline.map((d) => d.time)) || 3600; // 기본값 1시간
     const padding = { top: 40, right: 0, bottom: 60, left: 30 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
@@ -20,7 +21,7 @@ const ChatTimelineChart = React.forwardRef(({ timeline, width, height, onHover, 
     const xScale = (time) => (time / maxTime) * chartWidth;
     const yScale = (count) => chartHeight - (count / (maxCount || 1)) * chartHeight;
 
-    const points = timeline.map((d) => ({
+    const points = displayTimeline.map((d) => ({
         x: xScale(d.time),
         y: yScale(d.count),
         time: d.time,
@@ -112,12 +113,12 @@ const ChatTimelineChart = React.forwardRef(({ timeline, width, height, onHover, 
     const areaPath = `${pathData} L ${points[points.length - 1].x} ${chartHeight} L ${points[0].x} ${chartHeight} Z`;
 
     // X축 틱 생성 (최대 10개)
-    const tickCount = Math.min(10, timeline.length);
+    const tickCount = Math.min(10, displayTimeline.length);
     const timeTicks = [];
     for (let i = 0; i < tickCount; i++) {
-        const index = Math.floor((i / (tickCount - 1)) * (timeline.length - 1));
-        if (timeline[index]) {
-            const relativeTime = timeline[index].time;
+        const index = Math.floor((i / (tickCount - 1)) * (displayTimeline.length - 1));
+        if (displayTimeline[index]) {
+            const relativeTime = displayTimeline[index].time;
             const absoluteTime = startTime ? new Date(startTime.getTime() + relativeTime * 1000) : null;
 
             timeTicks.push({

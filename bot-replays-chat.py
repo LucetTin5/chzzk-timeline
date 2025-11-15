@@ -55,7 +55,7 @@ def get_top_100_channels_with_recent_replays(json_path):
     sorted_channels = sorted(channels, key=lambda x: x.get("follower", 0), reverse=True)
 
     # 상위 100명 추출
-    top_100 = sorted_channels[:1000]
+    top_100 = sorted_channels[:500]
     print("🏆 상위 100명 채널 추출 완료")
 
     # 한 달 이내 replays만 필터링
@@ -194,7 +194,7 @@ def process_replays_chat(filtered_replays_json_path, output_dir=None):
                 else:
                     all_video_nos.append(video_no)
             ll += 1
-            if ll > 0:
+            if ll > 5:
                 break
 
     print(f"📹 총 {len(all_video_nos) + len(existing_files)}개 replay 발견")
@@ -214,7 +214,7 @@ def process_replays_chat(filtered_replays_json_path, output_dir=None):
 def main():
     # 경로 설정
     base_dir = Path(__file__).resolve().parent
-    input_json = base_dir / "web" / "public" / "channel_with_replays_1.json"
+    input_json = base_dir / "web" / "public" / "channel_with_replays_0.json"
     filtered_json = base_dir / "top100_recent_replays_2.json"
     chat_output_dir = base_dir / "chat_logs"
 
