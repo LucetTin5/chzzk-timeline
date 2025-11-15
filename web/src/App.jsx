@@ -186,6 +186,12 @@ const App = () => {
           <Route path="/chat/:videoId" element={<ChatPage />} />
         </Routes>
       </div>
+
+      <footer className="relative w-full py-6 pr-6 text-right text-xs text-slate-500 bg-slate-950/95">
+        <p>치지직 타임라인은 "치지직"과 무관한 서드파티 프로젝트입니다.</p>
+        <p>"치지직" 혹은 "CHZZK" 은 NAVER Corp.의 등록 상표입니다.</p>
+        <p>© 2025 violet-dev. ALL RIGHTS RESERVED.</p>
+      </footer>
     </div>
   );
 };

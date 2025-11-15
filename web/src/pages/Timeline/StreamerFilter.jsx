@@ -19,6 +19,7 @@ export const CONTENT_FILTER_GROUPS = [
     { label: '멋봉리', group: '스트리머 서버', category: '마인크래프트', description: '', keywords: ['멋봉리'], tags: [] },
     { label: '마통대', group: '스트리머 서버', category: '마인크래프트', description: '', keywords: ['마통대'], tags: [] },
     { label: '연밥리', group: '스트리머 서버', category: '마인크래프트', description: '', keywords: ['연밥리'], tags: [] },
+    { label: '두라기 공원', group: '스트리머 서버', category: '아크: 서바이벌 이볼브드', description: '', keywords: ['두라기', '두라기공원'], tags: ['두라기공원'] },
     { label: '쌀멋서버', group: '스트리머 서버', category: '마인크래프트', description: '', keywords: ['쌀멋', '쌀멋서버'], tags: ['쌀멋서버'] },
     { label: '콩밥특별시', group: '스트리머 서버', category: 'Grand Theft Auto V', description: '', keywords: ['콩밥', '콩밥특별시'], tags: ['콩밥특별시'] },
     { label: '봉누도', group: '스트리머 서버', category: 'Grand Theft Auto V', description: 'GTA5 기반 RP 서버', keywords: ['봉누도'], tags: [] },
