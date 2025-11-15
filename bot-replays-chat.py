@@ -21,7 +21,7 @@ def save_json_file(data, file_path):
 def filter_replays_within_month(replays):
     """한 달 이내의 replays만 필터링합니다."""
     now = datetime.now(timezone(timedelta(hours=9)))  # KST
-    one_month_ago = now - timedelta(days=30)
+    one_month_ago = now - timedelta(days=90)
 
     filtered = []
     for replay in replays:
@@ -55,7 +55,7 @@ def get_top_100_channels_with_recent_replays(json_path):
     sorted_channels = sorted(channels, key=lambda x: x.get("follower", 0), reverse=True)
 
     # 상위 100명 추출
-    top_100 = sorted_channels[:200]
+    top_100 = sorted_channels[:1000]
     print("🏆 상위 100명 채널 추출 완료")
 
     # 한 달 이내 replays만 필터링
@@ -184,6 +184,7 @@ def process_replays_chat(filtered_replays_json_path, output_dir=None):
     all_video_nos = []
     existing_files = []
     for channel in data:
+        ll = 0
         for replay in channel.get("replays", []):
             video_no = replay.get("videoNo")
             if video_no:
@@ -192,8 +193,9 @@ def process_replays_chat(filtered_replays_json_path, output_dir=None):
                     existing_files.append(video_no)
                 else:
                     all_video_nos.append(video_no)
-
-            break
+            ll += 1
+            if ll > 0:
+                break
 
     print(f"📹 총 {len(all_video_nos) + len(existing_files)}개 replay 발견")
     if existing_files:
@@ -212,8 +214,8 @@ def process_replays_chat(filtered_replays_json_path, output_dir=None):
 def main():
     # 경로 설정
     base_dir = Path(__file__).resolve().parent
-    input_json = base_dir / "web" / "public" / "channel_with_replays_0.json"
-    filtered_json = base_dir / "top100_recent_replays.json"
+    input_json = base_dir / "web" / "public" / "channel_with_replays_1.json"
+    filtered_json = base_dir / "top100_recent_replays_2.json"
     chat_output_dir = base_dir / "chat_logs"
 
     # 1단계: 상위 100명의 한 달 이내 replays 필터링 및 저장

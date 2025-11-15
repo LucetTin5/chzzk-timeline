@@ -25,9 +25,9 @@ pub enum Opt {
 /// 채팅 분석 모드 옵션
 #[derive(StructOpt, Debug)]
 pub struct AnalysisChatOpt {
-    /// 채널 및 리플레이 데이터 파일 경로
-    #[structopt(long, default_value = "../web/public/channel_with_replays_0.json")]
-    pub file: String,
+    /// 채널 및 리플레이 데이터 파일 경로 (여러 개 지정 가능)
+    #[structopt(long)]
+    pub files: Vec<String>,
 }
 
 /// ====== 엔트리포인트 ======
@@ -58,10 +58,25 @@ async fn run_live_chat_test() -> Result<()> {
 
 /// 채팅 분석 모드 실행
 async fn run_analysis_chat(opts: &AnalysisChatOpt) -> Result<()> {
-    utils::log(format!("채팅 분석 모드 시작: {}", opts.file));
+    // 파일 경로가 지정되지 않았으면 기본값 사용
+    let file_paths = if opts.files.is_empty() {
+        vec![
+            "../web/public/channel_with_replays_0.json".to_string(),
+            "../web/public/channel_with_replays_1.json".to_string(),
+        ]
+    } else {
+        opts.files.clone()
+    };
 
-    // 채널 데이터 로드
-    let channels = data::loader::load_channel_with_replays(&opts.file)?;
+    utils::log(format!("채팅 분석 모드 시작: {}개 파일", file_paths.len()));
+
+    // 여러 파일에서 채널 데이터 로드
+    let mut channels = Vec::new();
+    for file_path in &file_paths {
+        utils::log(format!("파일 로드 중: {}", file_path));
+        let mut file_channels = data::loader::load_channel_with_replays(file_path)?;
+        channels.append(&mut file_channels);
+    }
     utils::log(format!("로드된 채널 수: {}", channels.len()));
 
     // chat_logs 폴더에서 모든 채팅 로그 로드
@@ -73,8 +88,28 @@ async fn run_analysis_chat(opts: &AnalysisChatOpt) -> Result<()> {
     // 각 채팅 로그 분석
     for chat_log in &chat_logs {
         let analysis = data::chat_analyzer::analyze_chat_log(chat_log);
-        data::chat_analyzer::print_analysis_summary(chat_log, &analysis);
+        data::chat_analyzer::print_analysis_summary(chat_log, &analysis, &channels);
     }
+
+    // 고유 사용자 수 만 명 이상인 chat_log 필터링
+    utils::log("고유 사용자 수 기준 필터링 중...");
+    let chat_logs = data::chat_analyzer::filter_chat_logs_by_user_count(chat_logs, 10000);
+
+    // 채널 간 distance 계산
+    utils::log("채널 간 거리 계산 중...");
+    let (nodes, links) =
+        data::chat_analyzer::calculate_channel_distances(&chat_logs, &channels, None);
+
+    utils::log(format!("계산된 채널 노드 수: {}", nodes.len()));
+    utils::log(format!("계산된 채널 링크 수: {}", links.len()));
+
+    // 채널별로 가장 가까운 채널 상위 5개 출력
+    data::chat_analyzer::print_top_closest_channels(&nodes, &links);
+
+    // 유사한 다시보기 클러스터링 (시청자 수 기준)
+    utils::log("유사한 다시보기 클러스터링 중 (시청자 수 기준)...");
+    let clusters = data::chat_analyzer::cluster_similar_replays(&channels, &chat_logs, 0.3);
+    data::chat_analyzer::print_replay_clusters(&clusters, Some(10));
 
     Ok(())
 }
