@@ -184,8 +184,25 @@ function Graph({ data, selectedChannel, setSelectedChannel }) {
 
     /* ---------- 시뮬레이션 ---------- */
     useEffect(() => {
-        const simNodes = clusteredData.nodes.map((d) => ({ ...d }));
-        const simLinks = clusteredData.links.map((l) => ({ ...l }));
+        // 노드를 최대 300개로 제한
+        const MAX_NODES = 300;
+        const limitedNodes = clusteredData.nodes
+            .slice(0, MAX_NODES)
+            .map((d) => ({ ...d }));
+
+        // 제한된 노드의 ID 집합 생성
+        const nodeIdSet = new Set(limitedNodes.map((n) => n.id));
+
+        // 제한된 노드에 연결된 링크만 필터링
+        const simLinks = clusteredData.links
+            .filter((l) => {
+                const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+                const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+                return nodeIdSet.has(sourceId) && nodeIdSet.has(targetId);
+            })
+            .map((l) => ({ ...l }));
+
+        const simNodes = limitedNodes;
 
         // 노드 반경을 미리 넣어두면 클러스터 반지름 계산에 유리
         simNodes.forEach((n) => {

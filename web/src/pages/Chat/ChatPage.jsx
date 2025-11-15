@@ -1,0 +1,304 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { Container, Stack, Text } from '@mantine/core';
+import ChatTimelineChart from './ChatTimelineChart.jsx';
+import { VideoHeader } from './VideoHeader.jsx';
+import { VideoInfo } from './VideoInfo.jsx';
+import { ChatStats } from './ChatStats.jsx';
+import { ChatTooltip } from './ChatTooltip.jsx';
+
+const ChatPage = () => {
+    const { videoId } = useParams();
+    const [videoData, setVideoData] = useState(null);
+    const [videoInfo, setVideoInfo] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [chartWidth, setChartWidth] = useState(800);
+    const chartContainerRef = useRef(null);
+    const chartSvgRef = useRef(null);
+    const [hoveredPoint, setHoveredPoint] = useState(null);
+    const [tooltipPosition, setTooltipPosition] = useState(null);
+    const [isFirstRender, setIsFirstRender] = useState(true);
+
+    useEffect(() => {
+        let aborted = false;
+
+        async function loadVideoData() {
+            try {
+                setLoading(true);
+                setError(null);
+
+                // 채팅 데이터와 비디오 정보를 동시에 로드
+                const [chatResponse, ...channelResponses] = await Promise.all([
+                    fetch('/video_with_chat_counts.json'),
+                    fetch('/channel_with_replays_0.json'),
+                    fetch('/channel_with_replays_1.json'),
+                ]);
+
+                if (!chatResponse.ok) {
+                    throw new Error(`데이터를 불러오지 못했습니다. 상태 코드: ${chatResponse.status}`);
+                }
+
+                const chatData = await chatResponse.json();
+                const videos = Array.isArray(chatData?.videos) ? chatData.videos : [];
+                const video = videos.find((v) => String(v.videoId) === String(videoId));
+
+                if (!video) {
+                    if (!aborted) {
+                        setError(new Error(`비디오 ID ${videoId}에 해당하는 데이터를 찾을 수 없습니다.`));
+                        setLoading(false);
+                    }
+                    return;
+                }
+
+                // channel_with_replays에서 비디오 정보 찾기
+                let videoInfoData = null;
+                try {
+                    const channelDataArrays = await Promise.all(
+                        channelResponses.map(async (res) => {
+                            if (!res.ok) return [];
+                            const data = await res.json();
+                            return Array.isArray(data) ? data : [];
+                        })
+                    );
+                    const allChannels = channelDataArrays.flat();
+
+                    // 모든 채널의 리플레이에서 videoId로 매칭
+                    for (const channel of allChannels) {
+                        if (Array.isArray(channel?.replays)) {
+                            const replay = channel.replays.find(
+                                (r) => String(r.videoId) === String(videoId) || String(r.videoNo) === String(videoId)
+                            );
+                            if (replay) {
+                                videoInfoData = {
+                                    replay,
+                                    channel,
+                                };
+                                break;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn('비디오 정보를 가져오는 중 오류:', err);
+                    // 비디오 정보를 찾지 못해도 채팅 데이터는 표시
+                }
+
+                if (!aborted) {
+                    setVideoData(video);
+                    setVideoInfo(videoInfoData);
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error(err);
+                if (!aborted) {
+                    setError(err);
+                    setLoading(false);
+                }
+            }
+        }
+
+        loadVideoData();
+
+        return () => {
+            aborted = true;
+        };
+    }, [videoId]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !chartContainerRef.current) return;
+
+        const updateChartWidth = () => {
+            const container = chartContainerRef.current;
+            if (!container) return;
+
+            // 컨테이너의 실제 가용 너비 계산 (padding 제외)
+            const containerRect = container.getBoundingClientRect();
+            const padding = 64; // p-8 = 2rem = 32px * 2
+            const availableWidth = containerRect.width - padding;
+
+            setChartWidth(Math.max(400, availableWidth));
+        };
+
+        // 초기 설정
+        updateChartWidth();
+
+        // ResizeObserver로 컨테이너 크기 변경 감지
+        const resizeObserver = new ResizeObserver(() => {
+            updateChartWidth();
+        });
+
+        resizeObserver.observe(chartContainerRef.current);
+
+        // 윈도우 리사이즈도 감지 (스크롤바 등으로 인한 변경)
+        window.addEventListener('resize', updateChartWidth);
+
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', updateChartWidth);
+        };
+    }, [videoData]);
+
+    // hoveredPoint 변경 시 툴팁 위치 업데이트 (데이터 포인트 화면 좌표로)
+    const handlePointScreenPosition = useMemo(() => {
+        return (pos) => {
+            // 유효한 위치일 때만 설정
+            if (pos && pos.x > 0 && pos.y > 0) {
+                setTooltipPosition(pos);
+                setIsFirstRender(false);
+            } else {
+                setTooltipPosition(null);
+                setIsFirstRender(true);
+            }
+        };
+    }, []);
+
+    const parsedStartTime = useMemo(() => {
+        if (!videoData?.start_time) return null;
+        try {
+            return new Date(videoData.start_time);
+        } catch {
+            return null;
+        }
+    }, [videoData]);
+
+    const totalDuration = useMemo(() => {
+        if (!videoData?.timeline || videoData.timeline.length === 0) return 0;
+        return Math.max(...videoData.timeline.map((d) => d.time));
+    }, [videoData]);
+
+    const endTime = useMemo(() => {
+        if (!parsedStartTime || !totalDuration) return null;
+        return new Date(parsedStartTime.getTime() + totalDuration * 1000);
+    }, [parsedStartTime, totalDuration]);
+
+    const stats = useMemo(() => {
+        if (!videoData?.timeline || videoData.timeline.length === 0) {
+            return { total: 0, max: 0, min: 0, avg: 0 };
+        }
+
+        const counts = videoData.timeline.map((d) => d.count);
+        const total = counts.reduce((sum, count) => sum + count, 0);
+        const max = Math.max(...counts);
+        const min = Math.min(...counts);
+        const avg = Math.round(total / counts.length);
+
+        return { total, max, min, avg };
+    }, [videoData]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-slate-950/95 pt-28 pb-20 text-slate-100">
+                <Container size="xl">
+                    <div className="flex items-center justify-center py-20">
+                        <Text size="lg" c="dimmed">
+                            데이터를 불러오는 중...
+                        </Text>
+                    </div>
+                </Container>
+            </div>
+        );
+    }
+
+    if (error || !videoData) {
+        return (
+            <div className="min-h-screen bg-slate-950/95 pt-28 pb-20 text-slate-100">
+                <Container size="xl">
+                    <div className="flex items-center justify-center py-20">
+                        <div className="text-center">
+                            <Text size="lg" c="red" fw={600} mb="md">
+                                오류가 발생했습니다
+                            </Text>
+                            <Text size="sm" c="dimmed">
+                                {error?.message || '비디오 데이터를 찾을 수 없습니다.'}
+                            </Text>
+                        </div>
+                    </div>
+                </Container>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-slate-950/95 pt-28 pb-20 text-slate-100">
+            <Container size="xl">
+                <Stack gap="xl">
+                    {/* 헤더 */}
+                    <div className="overflow-hidden rounded-3xl border border-slate-800/70 bg-slate-900/95 p-8 shadow-lg shadow-slate-900/40">
+                        <Stack gap="lg">
+                            <VideoHeader videoInfo={videoInfo} videoData={videoData} />
+                            <VideoInfo parsedStartTime={parsedStartTime} endTime={endTime} totalDuration={totalDuration} />
+                            <ChatStats stats={stats} />
+                        </Stack>
+                    </div>
+
+                    {/* VOD 영상 */}
+                    {videoInfo?.replay?.videoNo ? (
+                        <div className="overflow-hidden rounded-3xl border border-slate-800/70 bg-slate-900/95 p-8 shadow-lg shadow-slate-900/40">
+                            <Text size="lg" fw={700} mb={6} className="text-slate-100">
+                                영상 보기
+                            </Text>
+                            <div className="relative w-full vod-iframe-wrapper" style={{ paddingBottom: '56.25%' }}>
+                                <iframe
+                                    src={`https://chzzk.naver.com/video/${videoInfo.replay.videoNo}`}
+                                    className="absolute inset-0 w-full rounded-xl border border-slate-800/60"
+                                    frameBorder="0"
+                                    allowFullScreen
+                                    width="100%"
+                                    height="1000px"
+                                    allow="autoplay"
+                                    title={`${videoInfo.replay.title || '비디오'} 재생`}
+                                />
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {/* 차트 */}
+                    {videoData.timeline && videoData.timeline.length > 0 ? (
+                        <div
+                            ref={chartContainerRef}
+                            className="overflow-hidden rounded-3xl border border-slate-800/70 bg-slate-900/95 p-8 shadow-lg shadow-slate-900/40"
+                        >
+                            <Text size="lg" fw={700} mb={6} className="text-slate-100">
+                                채팅 타임라인
+                            </Text>
+                            <Text size="sm" c="dimmed" mb={8}>
+                                시간별 채팅 수 변화
+                            </Text>
+                            <div className="w-full">
+                                <ChatTimelineChart
+                                    ref={chartSvgRef}
+                                    timeline={videoData.timeline}
+                                    width={chartWidth}
+                                    height={500}
+                                    startTime={parsedStartTime}
+                                    hoveredPoint={hoveredPoint}
+                                    onHover={(point) => {
+                                        setHoveredPoint(point);
+                                    }}
+                                    onPointScreenPosition={handlePointScreenPosition}
+                                    onMouseMove={(pos) => {
+                                        // 차트 위에서는 즉시 업데이트, tooltipPosition은 hoveredPoint 변경 시 업데이트됨
+                                    }}
+                                    onMouseLeave={() => {
+                                        setHoveredPoint(null);
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {/* 툴팁 - 화면 전체에서 표시 */}
+                    <ChatTooltip
+                        hoveredPoint={hoveredPoint}
+                        tooltipPosition={tooltipPosition}
+                        isFirstRender={isFirstRender}
+                        parsedStartTime={parsedStartTime}
+                    />
+                </Stack>
+            </Container>
+        </div>
+    );
+};
+
+export default ChatPage;
+

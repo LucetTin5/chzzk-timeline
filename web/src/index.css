@@ -5,3 +5,19 @@
 [list]::-webkit-calendar-picker-indicator {
   display: none !important;
 }
+
+.vod-iframe-wrapper {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9.0;
+}
+
+.vod-iframe-wrapper iframe {
+  position: absolute;
+  top: -60px;
+  /* VOD 페이지에 맞게 조정 */
+  left: -240px;
+  /* VOD 페이지에 맞게 조정 */
+  width: calc(125% + 300px);
+}
