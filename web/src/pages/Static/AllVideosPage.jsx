@@ -6,7 +6,7 @@ const AllVideosPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [uploaderByVideoNo, setUploaderByVideoNo] = useState(new Map());
-    const [sortKey, setSortKey] = useState('video'); // 'video' | 'start' | 'uptime'
+    const [sortKey, setSortKey] = useState('video'); // 'video' | 'start' | 'uptime' | 'messages'
     const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
 
     useEffect(() => {
@@ -94,6 +94,10 @@ const AllVideosPage = () => {
             const videoId = v?.videoId ?? v?.videoNo ?? v?.id;
             const startTime = v?.start_time || v?.startTime || '';
             const startTs = startTime ? Date.parse(startTime.replace(' ', 'T')) : 0;
+            const startDisplay = typeof startTime === 'string' ? startTime.split('+')[0] : startTime;
+            const totalMessages = Array.isArray(v?.timeline)
+                ? v.timeline.reduce((acc, t) => acc + (Number(t?.count) || 0), 0)
+                : 0;
             const originalUrl = videoId ? `https://chzzk.naver.com/video/${videoId}` : '#';
             const chatLogUrl = videoId ? `https://chzzk-timeline-static.pages.dev/chatLog-${videoId}.log` : '#';
             const inAppChatUrl = videoId ? `/chat/${videoId}` : '#';
@@ -101,7 +105,20 @@ const AllVideosPage = () => {
             const uptimeSec = uploader?.durationSec ?? null;
             const uptimeText = formatDuration(uptimeSec);
             const videoIdNum = Number(videoId) || 0;
-            return { videoId, videoIdNum, startTime, startTs, originalUrl, chatLogUrl, inAppChatUrl, uploader, uptimeText, uptimeSec };
+            return {
+                videoId,
+                videoIdNum,
+                startTime,
+                startDisplay,
+                startTs,
+                originalUrl,
+                chatLogUrl,
+                inAppChatUrl,
+                uploader,
+                uptimeText,
+                uptimeSec,
+                totalMessages,
+            };
         }).filter((x) => !!x.videoId);
         parsed.sort((a, b) => {
             let aVal = 0;
@@ -115,6 +132,9 @@ const AllVideosPage = () => {
             } else if (sortKey === 'uptime') {
                 aVal = a.uptimeSec ?? -1;
                 bVal = b.uptimeSec ?? -1;
+            } else if (sortKey === 'messages') {
+                aVal = a.totalMessages ?? -1;
+                bVal = b.totalMessages ?? -1;
             }
             const dir = sortDir === 'asc' ? 1 : -1;
             if (aVal === bVal) return 0;
@@ -164,7 +184,7 @@ const AllVideosPage = () => {
                             <button
                                 type="button"
                                 onClick={() => toggleSort('start')}
-                                className="hidden md:block md:col-span-3 text-left hover:text-teal-300"
+                                className="hidden md:block md:col-span-2 text-left hover:text-teal-300"
                                 aria-label="Start Time 정렬"
                                 title="Start Time 정렬"
                             >
@@ -178,6 +198,15 @@ const AllVideosPage = () => {
                                 title="Up Time 정렬"
                             >
                                 Up Time{sortIndicator('uptime')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleSort('messages')}
+                                className="hidden md:block md:col-span-1 text-left hover:text-teal-300"
+                                aria-label="Messages 정렬"
+                                title="Messages 정렬"
+                            >
+                                Messages{sortIndicator('messages')}
                             </button>
                             <div className="col-span-4 md:col-span-3">Links</div>
                         </div>
@@ -205,8 +234,9 @@ const AllVideosPage = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="hidden md:block md:col-span-3 text-slate-300">{item.startTime || '-'}</div>
+                                    <div className="hidden md:block md:col-span-2 text-slate-300">{item.startDisplay || '-'}</div>
                                     <div className="hidden md:block md:col-span-1 text-slate-300">{item.uptimeText}</div>
+                                    <div className="hidden md:block md:col-span-1 text-slate-300">{item.totalMessages?.toLocaleString?.() ?? item.totalMessages}</div>
                                     <div className="col-span-4 md:col-span-3 flex flex-nowrap gap-2">
                                         <a
                                             href={item.originalUrl}
