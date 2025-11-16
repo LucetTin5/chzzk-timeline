@@ -45,3 +45,52 @@ jobs:
         with:
           branch: "main"
           github_token: $
+      - name: Fail Safe Pull
+        if: ${{ failure() && steps.trypush.outcome == 'failure' }}
+        run: git pull
+      - name: Fail Safe 1
+        id: trypushfs1
+        if: ${{ failure() && steps.trypush.outcome == 'failure' }}
+        uses: ad-m/github-push-action@master
+        with:
+          branch: "master"
+          github_token: $
+      - name: Fail Safe Pull
+        if: ${{ failure() && steps.trypushfs1.outcome == 'failure' }}
+        run: git pull
+      - name: Fail Safe 2
+        id: trypushfs2
+        if: ${{ failure() && steps.trypushfs1.outcome == 'failure' }}
+        uses: ad-m/github-push-action@master
+        with:
+          branch: "master"
+          github_token: $
+      - name: Fail Safe Pull
+        if: ${{ failure() && steps.trypushfs2.outcome == 'failure' }}
+        run: git pull
+      - name: Fail Safe 3
+        id: trypushfs3
+        if: ${{ failure() && steps.trypushfs2.outcome == 'failure' }}
+        uses: ad-m/github-push-action@master
+        with:
+          branch: "master"
+          github_token: $
+      - name: Fail Safe Pull
+        if: ${{ failure() && steps.trypushfs3.outcome == 'failure' }}
+        run: git pull
+      - name: Fail Safe 4
+        id: trypushfs4
+        if: ${{ failure() && steps.trypushfs3.outcome == 'failure' }}
+        uses: ad-m/github-push-action@master
+        with:
+          branch: "master"
+          github_token: $
+      - name: Fail Safe Pull
+        if: ${{ failure() && steps.trypushfs4.outcome == 'failure' }}
+        run: git pull
+      - name: Fail Safe 5
+        if: ${{ failure() && steps.trypushfs4.outcome == 'failure' }}
+        uses: ad-m/github-push-action@master
+        with:
+          branch: "master"
+          github_token: $
