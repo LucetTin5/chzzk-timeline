@@ -1,4 +1,5 @@
-import { Badge, Button, Group, Text, Title } from '@mantine/core';
+import { Badge, Button, Group, Text, Title, Avatar } from '@mantine/core';
+import { Link } from 'react-router-dom';
 
 export const VideoHeader = ({ videoInfo, videoData }) => {
     return (
@@ -12,13 +13,8 @@ export const VideoHeader = ({ videoInfo, videoData }) => {
                 />
             ) : null}
             <div className="min-w-0">
-                {videoInfo?.channel?.name ? (
-                    <Text size="sm" c="dimmed" fw={600} className="uppercase tracking-wide mb-2">
-                        {videoInfo.channel.name}
-                    </Text>
-                ) : null}
                 {videoInfo?.replay?.title ? (
-                    <Title order={1} size={24} fw={800} className="text-slate-100 mb-2 break-words">
+                    <Title order={1} size={24} fw={800} className="text-slate-100 break-words">
                         {videoInfo.replay.title}
                     </Title>
                 ) : (
@@ -32,12 +28,12 @@ export const VideoHeader = ({ videoInfo, videoData }) => {
                     </div>
                 )}
                 {videoInfo?.replay?.categoryKo ? (
-                    <Badge size="lg" radius="md" variant="light" color="violet" className="inline-flex mb-2">
+                    <Badge size="lg" radius="md" variant="light" color="violet" className="inline-flex mt-[8px]">
                         {videoInfo.replay.categoryKo}
                     </Badge>
                 ) : null}
                 {Array.isArray(videoInfo?.replay?.tags) && videoInfo.replay.tags.length > 0 ? (
-                    <Group gap={8} wrap="wrap" mt={4}>
+                    <Group gap={8} wrap="wrap" mt={'8px'}>
                         {videoInfo.replay.tags
                             .filter(Boolean)
                             .slice(0, 10)
@@ -47,6 +43,52 @@ export const VideoHeader = ({ videoInfo, videoData }) => {
                                 </Badge>
                             ))}
                     </Group>
+                ) : null}
+                {videoInfo?.channel?.name ? (
+                    <div className="mt-[8px] mb-2">
+                        {videoInfo?.channel?.channelId ? (
+                            <Link
+                                to={`/channel/${videoInfo.channel.channelId}`}
+                                className="block rounded-xl bg-slate-900/60 px-3 py-2 transition-colors hover:bg-slate-800/70 cursor-pointer"
+                                title="채널 상세로 이동"
+                            >
+                                <Group gap="sm" align="center" wrap="nowrap">
+                                    <Avatar
+                                        src={videoInfo.channel.image ? `${videoInfo.channel.image}?type=f120_120_na` : undefined}
+                                        alt={videoInfo.channel.name}
+                                        radius="xl"
+                                        size={36}
+                                    >
+                                        {videoInfo.channel.name?.slice(0, 2)}
+                                    </Avatar>
+                                    <div className="min-w-0">
+                                        <Text size="sm" fw={700} className="text-slate-100 truncate">
+                                            {videoInfo.channel.name}
+                                        </Text>
+                                        <Text size="xs" c="dimmed" className="font-mono truncate">
+                                            {videoInfo.channel.channelId}
+                                        </Text>
+                                    </div>
+                                </Group>
+                            </Link>
+                        ) : (
+                            <div className="rounded-xl bg-slate-900/60 px-3 py-2">
+                                <Group gap="sm" align="center" wrap="nowrap">
+                                    <Avatar
+                                        src={videoInfo.channel.image ? `${videoInfo.channel.image}?type=f120_120_na` : undefined}
+                                        alt={videoInfo.channel.name}
+                                        radius="xl"
+                                        size={36}
+                                    >
+                                        {videoInfo.channel.name?.slice(0, 2)}
+                                    </Avatar>
+                                    <Text size="sm" c="dimmed" fw={600} className="uppercase tracking-wide truncate">
+                                        {videoInfo.channel.name}
+                                    </Text>
+                                </Group>
+                            </div>
+                        )}
+                    </div>
                 ) : null}
                 {videoInfo?.replay?.videoNo ? (
                     <Group mt={4}>
@@ -59,7 +101,7 @@ export const VideoHeader = ({ videoInfo, videoData }) => {
                             color="teal"
                             radius="lg"
                             size="md"
-                            className="mt-2 inline-flex items-center gap-2"
+                            className="mt-0 inline-flex items-center gap-2"
                             leftSection={
                                 <svg
                                     viewBox="0 0 24 24"
