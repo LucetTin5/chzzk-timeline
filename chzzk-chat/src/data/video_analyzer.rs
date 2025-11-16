@@ -8,7 +8,7 @@ use color_eyre::eyre::{Context, Result};
 use rayon::prelude::*;
 use serde::Serialize;
 
-use crate::data::models::{ChannelWithReplays, ChatLog};
+use crate::data::models::{ChannelWithReplays, ChatLog, Replay};
 
 /// 비디오 연관도 정보
 #[derive(Debug, Clone, Serialize)]
@@ -307,6 +307,34 @@ pub fn analyze_all_video_relations(
     let channels_arc = Arc::new(channels);
     let video_users_arc = Arc::new(video_users);
 
+    let mut replay_by_video_no: HashMap<u64, &Replay> = HashMap::new();
+    for channel in channels {
+        for replay in &channel.replays {
+            replay_by_video_no.insert(replay.video_no, replay);
+        }
+    }
+
+    // 모든 리플레이의 시간 문자열을 사전에 파싱하여 캐싱
+    // 불변 HashMap으로 만들어 Arc로 공유하므로 병렬 구간에서 락 없이 조회 가능
+    let mut time_cache: HashMap<String, DateTime<FixedOffset>> = HashMap::new();
+    for channel in channels {
+        for replay in &channel.replays {
+            if !time_cache.contains_key(&replay.start) {
+                if let Ok(dt) = parse_replay_time(&replay.start) {
+                    time_cache.insert(replay.start.clone(), dt);
+                }
+            }
+            if !time_cache.contains_key(&replay.end) {
+                if let Ok(dt) = parse_replay_time(&replay.end) {
+                    time_cache.insert(replay.end.clone(), dt);
+                }
+            }
+        }
+    }
+    let time_cache_arc = Arc::new(time_cache);
+
+    let empty_set = HashSet::new();
+
     // Progress bar 생성
     let pb = utils::create_progress_bar(total_videos as u64, "Analyzing video relations...");
     let pb_arc = Arc::new(pb);
@@ -317,37 +345,31 @@ pub fn analyze_all_video_relations(
         .filter_map(|target_video_no| {
             let channels_ref = Arc::clone(&channels_arc);
             let video_users_ref = Arc::clone(&video_users_arc);
+            let time_cache_ref = Arc::clone(&time_cache_arc);
             let pb_ref = Arc::clone(&pb_arc);
 
             // Progress bar 업데이트
             pb_ref.inc(1);
 
             // 대상 비디오의 Replay 찾기
-            let target_replay = match channels_ref
-                .iter()
-                .flat_map(|channel| &channel.replays)
-                .find(|replay| replay.video_no == *target_video_no)
-            {
-                Some(r) => r,
+            let target_replay = match replay_by_video_no.get(target_video_no) {
+                Some(r) => *r,
                 None => return None,
             };
 
             // 대상 비디오의 시간 범위 파싱
-            let target_start = match parse_replay_time(&target_replay.start) {
-                Ok(dt) => dt,
-                Err(_) => return None,
+            let target_start = match time_cache_ref.get(target_replay.start.as_str()) {
+                Some(dt) => dt.clone(),
+                None => return None,
             };
 
-            let target_end = match parse_replay_time(&target_replay.end) {
-                Ok(dt) => dt,
-                Err(_) => return None,
+            let target_end = match time_cache_ref.get(target_replay.end.as_str()) {
+                Some(dt) => dt.clone(),
+                None => return None,
             };
 
             // 대상 비디오의 유저 집합
-            let target_users = video_users_ref
-                .get(target_video_no)
-                .cloned()
-                .unwrap_or_default();
+            let target_users = video_users_ref.get(target_video_no).unwrap_or(&empty_set);
 
             if target_users.is_empty() {
                 return None;
@@ -364,14 +386,14 @@ pub fn analyze_all_video_relations(
                     }
 
                     // 시간 범위 파싱
-                    let candidate_start = match parse_replay_time(&replay.start) {
-                        Ok(dt) => dt,
-                        Err(_) => continue,
+                    let candidate_start = match time_cache_ref.get(replay.start.as_str()) {
+                        Some(dt) => dt.clone(),
+                        None => continue,
                     };
 
-                    let candidate_end = match parse_replay_time(&replay.end) {
-                        Ok(dt) => dt,
-                        Err(_) => continue,
+                    let candidate_end = match time_cache_ref.get(replay.end.as_str()) {
+                        Some(dt) => dt.clone(),
+                        None => continue,
                     };
 
                     // 시간 범위가 겹치는지 확인
@@ -385,14 +407,12 @@ pub fn analyze_all_video_relations(
                     }
 
                     // 채팅 유저 집합 가져오기
-                    let candidate_users = video_users_ref
-                        .get(&replay.video_no)
-                        .cloned()
-                        .unwrap_or_default();
+                    let candidate_users =
+                        video_users_ref.get(&replay.video_no).unwrap_or(&empty_set);
 
                     // 유저 겹침 유사도 계산
                     let (similarity, shared_users) =
-                        calculate_user_overlap_similarity(&target_users, &candidate_users);
+                        calculate_user_overlap_similarity(target_users, candidate_users);
 
                     // 유사도가 0.01 이상인 경우만 추가
                     if similarity >= 0.02 {
