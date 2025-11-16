@@ -105,8 +105,6 @@ export const RelatedChannels = ({ currentChannelId }) => {
                     <Grid.Col key={item.id} span={1}>
                         <a
                             href={`/channel/${item.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="block rounded-xl p-2 transition-colors hover:bg-slate-800/40"
                             aria-label={`${item.name} 채널로 이동`}
                         >
