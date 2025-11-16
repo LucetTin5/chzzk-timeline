@@ -332,12 +332,18 @@ pub fn calculate_channel_distances(
     let channel_users_arc = Arc::new(channel_users);
     let n = channel_nodes_arc.len();
 
+    // Progress bar 생성 (총 쌍 수: n * (n - 1) / 2)
+    let total_pairs = n * (n - 1) / 2;
+    let pb = utils::create_progress_bar(total_pairs as u64, "Calculating channel distances...");
+    let pb_arc = Arc::new(pb);
+
     // 모든 (i, j) 쌍을 생성 (i < j) - 병렬 처리
     let mut links: Vec<ChannelLink> = (0..n)
         .into_par_iter()
         .flat_map(|i| {
             let channel_nodes_ref = Arc::clone(&channel_nodes_arc);
             let channel_users_ref = Arc::clone(&channel_users_arc);
+            let pb_ref = Arc::clone(&pb_arc);
 
             let source_node = &channel_nodes_ref[i];
             let source_users = channel_users_ref
@@ -350,6 +356,8 @@ pub fn calculate_channel_distances(
             // 각 i에 대해 j > i인 모든 쌍을 생성
             ((i + 1)..n)
                 .map(move |j| {
+                    let pb_ref = Arc::clone(&pb_ref);
+
                     let target_node = &channel_nodes_ref[j];
                     let target_users = channel_users_ref
                         .get(&target_node.channel_id)
@@ -369,6 +377,9 @@ pub fn calculate_channel_distances(
                         0.0
                     };
 
+                    // Progress bar 업데이트
+                    pb_ref.inc(1);
+
                     ChannelLink {
                         source: source_channel_id.clone(),
                         target: target_channel_id,
@@ -379,6 +390,9 @@ pub fn calculate_channel_distances(
                 .collect::<Vec<_>>()
         })
         .collect();
+
+    // Progress bar 완료
+    pb_arc.finish_with_message("Channel distances calculated!");
 
     // channel_nodes를 Arc에서 다시 가져오기
     let channel_nodes = Arc::try_unwrap(channel_nodes_arc).unwrap_or_else(|arc| (*arc).clone());
