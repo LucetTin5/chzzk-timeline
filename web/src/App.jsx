@@ -132,7 +132,7 @@ const App = () => {
           <button
             type="button"
             onClick={() => setIsInfoOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800/70 text-slate-100 transition-colors hover:bg-slate-700/80"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800/70 text-slate-100 transition-colors hover:bg-slate-700/80 cursor-pointer"
             aria-label="프로젝트 정보 보기"
             title="프로젝트 정보"
           >
