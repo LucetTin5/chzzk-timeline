@@ -517,8 +517,8 @@ pub fn export_video_relations_json<P: AsRef<Path>>(
         .collect();
 
     // JSON 파일로 저장
-    let json_string = serde_json::to_string_pretty(&json_data)
-        .context("Failed to serialize video relations to JSON")?;
+    let json_string =
+        serde_json::to_string(&json_data).context("Failed to serialize video relations to JSON")?;
     fs::write(&output_path, json_string)
         .with_context(|| format!("Failed to write JSON file: {:?}", output_path.as_ref()))?;
 

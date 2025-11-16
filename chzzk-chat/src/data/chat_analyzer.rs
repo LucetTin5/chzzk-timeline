@@ -441,7 +441,7 @@ pub fn export_channel_distances_json<P: AsRef<Path>>(
     };
 
     // JSON 파일로 저장
-    let json_string = serde_json::to_string_pretty(&json_data)
+    let json_string = serde_json::to_string(&json_data)
         .context("Failed to serialize channel distances to JSON")?;
     fs::write(&output_path, json_string)
         .with_context(|| format!("Failed to write JSON file: {:?}", output_path.as_ref()))?;
@@ -515,7 +515,7 @@ pub fn export_related_channel_links_json<P: AsRef<Path>>(
         }
     }
 
-    let json_string = serde_json::to_string_pretty(&json_map)
+    let json_string = serde_json::to_string(&json_map)
         .context("Failed to serialize related channel links to JSON")?;
     fs::write(&output_path, json_string).with_context(|| {
         format!(
