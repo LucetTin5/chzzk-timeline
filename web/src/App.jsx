@@ -4,6 +4,7 @@ import MapPage from './pages/Map/MapPage.jsx';
 import TimelinePage from './pages/Timeline/TimelinePage.jsx';
 import ChatPage from './pages/Chat/ChatPage.jsx';
 import AllVideosPage from './pages/Static/AllVideosPage.jsx';
+import ChannelPage from './pages/Channel/ChannelPage.jsx';
 
 const MapPinIcon = (props) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" {...props}>
@@ -185,6 +186,7 @@ const App = () => {
           <Route path="/map" element={<MapPage />} />
           <Route path="/timeline" element={<TimelinePage />} />
           <Route path="/chat/:videoId" element={<ChatPage />} />
+          <Route path="/channel/:channelId" element={<ChannelPage />} />
           <Route path="/static/videos" element={<AllVideosPage />} />
         </Routes>
       </div>

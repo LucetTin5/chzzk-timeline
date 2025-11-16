@@ -104,7 +104,7 @@ export const RelatedChannels = ({ currentChannelId }) => {
                 {relatedItems.map((item) => (
                     <Grid.Col key={item.id} span={1}>
                         <a
-                            href={`https://chzzk.naver.com/${item.id}`}
+                            href={`/channel/${item.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="block rounded-xl p-2 transition-colors hover:bg-slate-800/40"

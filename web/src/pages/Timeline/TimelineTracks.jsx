@@ -275,7 +275,7 @@ const ChannelSidebar = ({ channelRows, rowHeight, isMobile }) => {
             </div>
             {channelRows.map(({ channel }, rowIndex) => {
                 const key = channel.channelId ?? channel.name;
-                const channelUrl = channel?.channelId ? `https://chzzk.naver.com/${channel.channelId}` : null;
+                const channelUrl = channel?.channelId ? `/channel/${channel.channelId}` : null;
 
                 const content = (
                     <div
@@ -405,7 +405,7 @@ const ChannelSidebar = ({ channelRows, rowHeight, isMobile }) => {
                                 {relatedItems.map((item) => (
                                     <a
                                         key={item.id}
-                                        href={`https://chzzk.naver.com/${item.id}`}
+                                        href={`/channel/${item.id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex flex-col items-center rounded-xl p-2 transition-colors hover:bg-slate-800/40"
