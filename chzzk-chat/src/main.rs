@@ -22,10 +22,6 @@ pub enum Opt {
     /// 채팅 분석 모드
     #[structopt(name = "analysis-chat")]
     AnalysisChat(AnalysisChatOpt),
-
-    /// 비디오 연관도 분석 모드
-    #[structopt(name = "find-related-replays")]
-    FindRelatedReplays(FindRelatedReplaysOpt),
 }
 
 /// 채팅 분석 모드 옵션
@@ -34,18 +30,6 @@ pub struct AnalysisChatOpt {
     /// 채널 및 리플레이 데이터 파일 경로 (여러 개 지정 가능)
     #[structopt(long)]
     pub files: Vec<String>,
-}
-
-/// 비디오 연관도 분석 모드 옵션
-#[derive(StructOpt, Debug)]
-pub struct FindRelatedReplaysOpt {
-    /// 채널 및 리플레이 데이터 파일 경로 (여러 개 지정 가능)
-    #[structopt(long)]
-    pub files: Vec<String>,
-
-    /// 출력할 연관 비디오 최대 개수
-    #[structopt(long, default_value = "20")]
-    pub max_count: usize,
 }
 
 /// ====== 엔트리포인트 ======
@@ -58,7 +42,6 @@ async fn main() -> Result<()> {
     match opt {
         Opt::LiveChatTest => run_live_chat_test().await?,
         Opt::AnalysisChat(opts) => run_analysis_chat(&opts).await?,
-        Opt::FindRelatedReplays(opts) => run_find_related_replays(&opts).await?,
     }
 
     Ok(())
@@ -99,7 +82,10 @@ async fn run_analysis_chat(opts: &AnalysisChatOpt) -> Result<()> {
 
     // run_cluster_similar_replays(&channels, &chat_logs);
 
-    Ok(())
+    run_find_related_replays(&channels, &chat_logs)?;
+
+    // 메모리 해제하는데 너무 많은 시간을 써서 그냥 메모리 정리는 커널에 던지고 종료
+    std::process::exit(0);
 }
 
 fn load_channels_and_chat_logs(
@@ -176,9 +162,10 @@ fn run_cluster_similar_replays(channels: &Vec<ChannelWithReplays>, chat_logs: &V
 }
 
 /// 비디오 연관도 분석 모드 실행
-async fn run_find_related_replays(opts: &FindRelatedReplaysOpt) -> Result<()> {
-    let (channels, chat_logs) = load_channels_and_chat_logs_for_analysis(&opts.files)?;
-
+fn run_find_related_replays(
+    channels: &Vec<ChannelWithReplays>,
+    chat_logs: &Vec<ChatLog>,
+) -> Result<()> {
     // 모든 비디오 간 연관도 분석
     let all_relations = data::video_analyzer::analyze_all_video_relations(&channels, &chat_logs)?;
 
@@ -189,43 +176,7 @@ async fn run_find_related_replays(opts: &FindRelatedReplaysOpt) -> Result<()> {
     )?;
 
     // 전체 분석 결과 요약 출력
-    data::video_analyzer::print_all_video_relations(&all_relations, Some(opts.max_count));
+    data::video_analyzer::print_all_video_relations(&all_relations, Some(20));
 
     Ok(())
-}
-
-/// 채널 및 채팅 로그 로드 (분석용)
-fn load_channels_and_chat_logs_for_analysis(
-    files: &[String],
-) -> Result<(
-    Vec<data::models::ChannelWithReplays>,
-    Vec<data::models::ChatLog>,
-)> {
-    let file_paths = if files.is_empty() {
-        vec![
-            "../web/public/channel_with_replays_0.json".to_string(),
-            "../web/public/channel_with_replays_1.json".to_string(),
-        ]
-    } else {
-        files.to_vec()
-    };
-
-    utils::log(format!("채널 데이터 로드 중: {}개 파일", file_paths.len()));
-
-    let mut channels = Vec::new();
-    for file_path in &file_paths {
-        utils::log(format!("파일 로드 중: {}", file_path));
-        let mut file_channels = data::loader::load_channel_with_replays(file_path)?;
-        channels.append(&mut file_channels);
-    }
-
-    utils::log(format!("로드된 채널 수: {}", channels.len()));
-
-    let chat_logs_dir = "../chat_logs";
-    utils::log(format!("채팅 로그 폴더에서 데이터 로드: {}", chat_logs_dir));
-
-    let chat_logs = data::chat_loader::load_all_chat_logs(chat_logs_dir)?;
-    utils::log(format!("로드된 채팅 로그 수: {}", chat_logs.len()));
-
-    Ok((channels, chat_logs))
 }
