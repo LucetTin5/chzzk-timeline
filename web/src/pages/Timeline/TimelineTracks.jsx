@@ -559,19 +559,19 @@ const TimelineCanvas = ({
 
                     // 주황색 계열 그라데이션 클래스 (chat counts가 있는 경우)
                     const gradientClass = hasChatCounts
-                        ? 'bg-gradient-to-r from-orange-400/60 via-amber-400/58 to-yellow-400/60 hover:from-orange-300/78 hover:via-amber-300/78 hover:to-yellow-300/78'
-                        : 'bg-gradient-to-r from-emerald-400/60 via-teal-400/58 to-cyan-400/60 hover:from-emerald-300/78 hover:via-teal-300/78 hover:to-cyan-300/78';
+                        ? 'bg-gradient-to-r from-emerald-400/60 via-teal-400/58 to-cyan-400/60 hover:from-emerald-300/78 hover:via-teal-300/78 hover:to-cyan-300/78'
+                        : 'bg-gradient-to-r from-orange-400/60 via-amber-400/58 to-yellow-400/60 hover:from-orange-300/78 hover:via-amber-300/78 hover:to-yellow-300/78';
 
                     // 주황색 계열 그림자
                     const boxShadow = hasChatCounts
-                        ? '0 6px 14px -8px rgba(251, 146, 60, 0.45)'
-                        : '0 6px 14px -8px rgba(45, 212, 191, 0.45)';
+                        ? '0 6px 14px -8px rgba(45, 212, 191, 0.45)'
+                        : '0 6px 14px -8px rgba(251, 146, 60, 0.45)';
 
                     // 주황색 계열 텍스트 색상
-                    const textColorClass = hasChatCounts ? 'text-orange-50' : 'text-teal-50';
+                    const textColorClass = hasChatCounts ? 'text-teal-50' : 'text-orange-50';
                     const textShadow = hasChatCounts
-                        ? '0 1px 2px rgba(154, 52, 18, 0.45)'
-                        : '0 1px 2px rgba(15, 118, 110, 0.45)';
+                        ? '0 1px 2px rgba(15, 118, 110, 0.45)'
+                        : '0 1px 2px rgba(154, 52, 18, 0.45)';
 
                     return (
                         <a
