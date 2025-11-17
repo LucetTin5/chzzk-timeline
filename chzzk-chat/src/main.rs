@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use color_eyre::eyre::Result;
+use mimalloc::MiMalloc;
 use structopt::StructOpt;
 use tokio::time;
 
@@ -9,6 +10,9 @@ use crate::data::models::{ChannelWithReplays, ChatLog};
 mod api;
 mod data;
 mod utils;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 /// ====== CLI 구조체 ======
 
@@ -176,7 +180,7 @@ fn run_find_related_replays(
     )?;
 
     // 전체 분석 결과 요약 출력
-    data::video_analyzer::print_all_video_relations(&all_relations, Some(20));
+    // data::video_analyzer::print_all_video_relations(&all_relations, Some(20));
 
     Ok(())
 }
