@@ -187,7 +187,7 @@ const App = () => {
           <Route path="/timeline" element={<TimelinePage />} />
           <Route path="/chat/:videoId" element={<ChatPage />} />
           <Route path="/channel/:channelId" element={<ChannelPage />} />
-          <Route path="/static/videos" element={<AllVideosPage />} />
+          {/* <Route path="/static/videos" element={<AllVideosPage />} /> */}
         </Routes>
       </div>
 
