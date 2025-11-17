@@ -121,7 +121,8 @@ fn load_channels_and_chat_logs(
     let chat_logs_dir = "../chat_logs";
     utils::log(format!("채팅 로그 폴더에서 데이터 로드: {}", chat_logs_dir));
 
-    let chat_logs = data::chat_loader::load_all_chat_logs(chat_logs_dir)?;
+    let chat_logs =
+        data::chat_loader::load_all_chat_logs(chat_logs_dir, Some("../chat_logs_cache"))?;
     utils::log(format!("로드된 채팅 로그 수: {}", chat_logs.len()));
 
     Ok((channels, chat_logs))

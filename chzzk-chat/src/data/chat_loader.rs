@@ -2,7 +2,8 @@ use color_eyre::eyre::{Context, Result};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fs;
-use std::path::Path;
+use std::io::{BufReader, BufWriter};
+use std::path::{Path, PathBuf};
 
 use crate::data::models::{ChatLog, ChatMessage};
 use crate::utils;
@@ -84,9 +85,43 @@ pub fn load_chat_log<P: AsRef<Path>>(path: P) -> Result<ChatLog> {
     Ok(ChatLog { video_id, messages })
 }
 
+/// 캐시 파일에서 ChatLog를 로드합니다.
+fn load_chat_log_from_cache<P: AsRef<Path>>(cache_path: P) -> Result<ChatLog> {
+    let cache_path = cache_path.as_ref();
+    let file = fs::File::open(cache_path)
+        .with_context(|| format!("Failed to open cache file: {:?}", cache_path))?;
+    let reader = BufReader::new(file);
+    ciborium::de::from_reader(reader)
+        .with_context(|| format!("Failed to deserialize cache file: {:?}", cache_path))
+}
+
+/// ChatLog를 캐시 파일에 저장합니다.
+fn save_chat_log_to_cache<P: AsRef<Path>>(chat_log: &ChatLog, cache_path: P) -> Result<()> {
+    let cache_path = cache_path.as_ref();
+    let file = fs::File::create(cache_path)
+        .with_context(|| format!("Failed to create cache file: {:?}", cache_path))?;
+    let writer = BufWriter::new(file);
+    ciborium::ser::into_writer(chat_log, writer)
+        .with_context(|| format!("Failed to serialize to cache file: {:?}", cache_path))?;
+    Ok(())
+}
+
 /// chat_logs 폴더 내의 모든 채팅 로그 파일을 로드합니다.
-pub fn load_all_chat_logs<P: AsRef<Path>>(chat_logs_dir: P) -> Result<Vec<ChatLog>> {
+/// 캐시 디렉토리가 제공되면 CBOR 형식으로 캐싱된 파일을 사용합니다.
+pub fn load_all_chat_logs<P: AsRef<Path>>(
+    chat_logs_dir: P,
+    cache_dir: Option<&str>,
+) -> Result<Vec<ChatLog>> {
     let chat_logs_dir = chat_logs_dir.as_ref();
+    let cache_dir = cache_dir.unwrap_or("../chat_logs_cache");
+
+    // 캐시 디렉토리 생성
+    let cache_path = PathBuf::from(cache_dir);
+    if !cache_path.exists() {
+        fs::create_dir_all(&cache_path)
+            .with_context(|| format!("Failed to create cache directory: {:?}", cache_path))?;
+    }
+
     let entries = fs::read_dir(chat_logs_dir)
         .with_context(|| format!("Failed to read chat_logs directory: {:?}", chat_logs_dir))?;
 
@@ -110,21 +145,52 @@ pub fn load_all_chat_logs<P: AsRef<Path>>(chat_logs_dir: P) -> Result<Vec<ChatLo
     let pb = utils::create_progress_bar(total_files as u64, "Loading chat logs...");
 
     // 병렬로 파일 로드
-    // ProgressBar는 thread-safe하므로 Arc로 감싸지 않아도 됩니다.
+    // ProgressBar는 내부적으로 thread-safe하므로 Arc로 감싸지 않아도 됩니다.
+    let cache_dir_path = cache_path.clone();
     let mut chat_logs: Vec<ChatLog> = log_file_paths
         .par_iter()
         .filter_map(|path| {
-            let result = load_chat_log(path);
+            // 파일 이름에서 video_id 추출
+            let filename = path.file_name()?.to_str()?;
+            let video_id = extract_video_id_from_filename(filename)?;
+
+            // 캐시 파일 경로 생성
+            let cache_file_name = format!("chatLog-{}.log.cache", video_id);
+            let cache_file_path = cache_dir_path.join(&cache_file_name);
+
+            // 캐시 파일이 있으면 로드, 없으면 파싱 후 저장
+            let chat_log = if cache_file_path.exists() {
+                match load_chat_log_from_cache(&cache_file_path) {
+                    Ok(log) => log,
+                    Err(e) => {
+                        panic!("Failed to load cache {:?}, error: {}", cache_file_path, e);
+                    }
+                }
+            } else {
+                // 캐시가 없으면 파싱 후 저장
+                match load_chat_log(path) {
+                    Ok(log) => {
+                        // 캐시 저장 시도 (실패해도 계속 진행)
+                        if let Err(save_err) = save_chat_log_to_cache(&log, &cache_file_path) {
+                            eprintln!(
+                                "Warning: Failed to save cache {:?}: {}",
+                                cache_file_path, save_err
+                            );
+                        }
+                        log
+                    }
+                    Err(e) => {
+                        eprintln!("Warning: Failed to load chat log {:?}: {}", path, e);
+                        pb.inc(1);
+                        return None;
+                    }
+                }
+            };
+
             // ProgressBar는 내부적으로 thread-safe하므로 여러 스레드에서 안전하게 호출 가능
             pb.inc(1);
 
-            match result {
-                Ok(chat_log) => Some(chat_log),
-                Err(e) => {
-                    eprintln!("Warning: Failed to load chat log {:?}: {}", path, e);
-                    None
-                }
-            }
+            Some(chat_log)
         })
         .collect();
 
