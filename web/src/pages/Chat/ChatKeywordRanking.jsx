@@ -7,7 +7,7 @@ export const ChatKeywordRanking = ({ chatLogText, chatLogLoading, onKeywordClick
         if (!chatLogText) return [];
         try {
             const messages = parseChatLog(chatLogText);
-            return extractTopKeywords(messages, 1000, 2);
+            return extractTopKeywords(messages, 100, 2);
         } catch (err) {
             console.error('Failed to extract keywords:', err);
             return [];

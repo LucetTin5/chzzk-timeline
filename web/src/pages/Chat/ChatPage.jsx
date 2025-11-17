@@ -405,25 +405,29 @@ const ChatPage = () => {
                                         <ChatKeywordRanking chatLogText={chatLogText} chatLogLoading={chatLogLoading} onKeywordClick={setSearchKeyword} />
                                     </div>
 
-                                    <RelatedTimelineSection
-                                        videoId={videoId}
-                                        videoInfo={videoInfo}
-                                        isMobile={isMobile}
-                                        relatedVideosData={relatedVideosData}
-                                        videoWithChatCounts={videoWithChatCounts}
-                                    />
+                                    {relatedVideosData.length > 0 && (
+                                        <RelatedTimelineSection
+                                            videoId={videoId}
+                                            videoInfo={videoInfo}
+                                            isMobile={isMobile}
+                                            relatedVideosData={relatedVideosData}
+                                            videoWithChatCounts={videoWithChatCounts}
+                                        />
+                                    )}
 
                                     <RelatedVideos videos={relatedVideosForCards} />
                                 </>
                             ) : (
                                 <>
-                                    <RelatedTimelineSection
-                                        videoId={videoId}
-                                        videoInfo={videoInfo}
-                                        isMobile={isMobile}
-                                        relatedVideosData={relatedVideosData}
-                                        videoWithChatCounts={videoWithChatCounts}
-                                    />
+                                    {relatedVideosData.length > 0 && (
+                                        <RelatedTimelineSection
+                                            videoId={videoId}
+                                            videoInfo={videoInfo}
+                                            isMobile={isMobile}
+                                            relatedVideosData={relatedVideosData}
+                                            videoWithChatCounts={videoWithChatCounts}
+                                        />
+                                    )}
                                     <RelatedVideos videos={relatedVideosForCards} />
                                 </>
                             )}
