@@ -1,6 +1,6 @@
 /**
  * Chat log 파일을 파싱하여 메시지 배열로 변환
- * 형식: [2025-07-06 20:58:41] 닉네임: 메시지 (해시)
+ * 형식: [2025-07-06 20:58:41] 메시지
  */
 export const parseChatLog = (text) => {
     const lines = text.split('\n');
@@ -12,10 +12,10 @@ export const parseChatLog = (text) => {
 
         // [날짜 시간] 닉네임: 메시지 (해시) 형식 파싱
         // 메시지에 괄호가 있을 수 있으므로 마지막 괄호 쌍을 해시로 인식
-        const datetimeMatch = trimmed.match(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+(.+?):\s+(.+?)\s+\((.+)\)$/);
+        const datetimeMatch = trimmed.match(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+(.+?)$/);
         if (!datetimeMatch) continue;
 
-        const [, datetimeStr, nickname, messageWithPossibleHash, hash] = datetimeMatch;
+        const [, datetimeStr, messageWithPossibleHash] = datetimeMatch;
 
         // 메시지에서 마지막 해시를 제거 (해시가 메시지 끝에 있을 경우)
         let message = messageWithPossibleHash;
@@ -33,9 +33,7 @@ export const parseChatLog = (text) => {
             messages.push({
                 timestamp,
                 datetime: datetimeStr,
-                nickname,
                 message,
-                hash,
             });
         } catch (err) {
             console.warn('Failed to parse date:', datetimeStr, err);
