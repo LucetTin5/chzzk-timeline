@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Badge, Grid, Modal, Stack, Text, Tooltip } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 
 const RelatedChannelsDialog = ({ opened, onClose, items }) => {
+    const isMobile = useMediaQuery('(max-width: 768px)');
+
     return (
         <Modal
             opened={opened}
@@ -15,7 +18,7 @@ const RelatedChannelsDialog = ({ opened, onClose, items }) => {
                 body: { backgroundColor: 'rgb(15 23 42 / 0.95)' },
             }}
         >
-            <Grid columns={4} gutter="md">
+            <Grid columns={isMobile ? 2 : 4} gutter="md">
                 {items.map((item) => (
                     <Grid.Col key={item.id} span={1}>
                         <a
