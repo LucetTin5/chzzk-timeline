@@ -144,7 +144,7 @@ fn run_channel_distance_analysis(
         &links,
         "../web/public/related_channels.json",
         0.01,
-        6,
+        32,
         &vec![
             // 블랙리스트 채널들 (완전히 제외)
             "c5f1df85d73d9c613f0c27c0ef816857".to_string(),
